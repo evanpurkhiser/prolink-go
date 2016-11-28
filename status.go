@@ -16,28 +16,28 @@ const (
 
 // Play state flags
 const (
-	playStateEmpty     PlayState = 0x00
-	playStateLoading   PlayState = 0x02
-	playStatePlaying   PlayState = 0x03
-	playStateLooping   PlayState = 0x04
-	playStatePaused    PlayState = 0x05
-	playStateCued      PlayState = 0x06
-	playStateCuing     PlayState = 0x07
-	playStateSearching PlayState = 0x09
-	playStateEnded     PlayState = 0x11
+	PlayStateEmpty     PlayState = 0x00
+	PlayStateLoading   PlayState = 0x02
+	PlayStatePlaying   PlayState = 0x03
+	PlayStateLooping   PlayState = 0x04
+	PlayStatePaused    PlayState = 0x05
+	PlayStateCued      PlayState = 0x06
+	PlayStateCuing     PlayState = 0x07
+	PlayStateSearching PlayState = 0x09
+	PlayStateEnded     PlayState = 0x11
 )
 
 // Labels associated to the PlayState flags
 var playStateLabels = map[PlayState]string{
-	playStateEmpty:     "empty",
-	playStateLoading:   "loading",
-	playStatePlaying:   "playing",
-	playStateLooping:   "looping",
-	playStatePaused:    "paused",
-	playStateCued:      "cued",
-	playStateCuing:     "cuing",
-	playStateSearching: "searching",
-	playStateEnded:     "ended",
+	PlayStateEmpty:     "empty",
+	PlayStateLoading:   "loading",
+	PlayStatePlaying:   "playing",
+	PlayStateLooping:   "looping",
+	PlayStatePaused:    "paused",
+	PlayStateCued:      "cued",
+	PlayStateCuing:     "cuing",
+	PlayStateSearching: "searching",
+	PlayStateEnded:     "ended",
 }
 
 // PlayState represents the play state of the CDJ.
@@ -50,20 +50,20 @@ func (s PlayState) String() string {
 
 // Track load slot flags
 const (
-	trackSlotEmpty TrackSlot = 0x00
-	trackSlotCD    TrackSlot = 0x01
-	trackSlotSD    TrackSlot = 0x02
-	trackSlotUSB   TrackSlot = 0x03
-	trackSlotRB    TrackSlot = 0x04
+	TrackSlotEmpty TrackSlot = 0x00
+	TrackSlotCD    TrackSlot = 0x01
+	TrackSlotSD    TrackSlot = 0x02
+	TrackSlotUSB   TrackSlot = 0x03
+	TrackSlotRB    TrackSlot = 0x04
 )
 
 // Labels associated to the track load slot flags
 var trackSlotLabels = map[TrackSlot]string{
-	trackSlotEmpty: "empy",
-	trackSlotCD:    "cd",
-	trackSlotSD:    "sd",
-	trackSlotUSB:   "usb",
-	trackSlotRB:    "rekordbox",
+	TrackSlotEmpty: "empy",
+	TrackSlotCD:    "cd",
+	TrackSlotSD:    "sd",
+	TrackSlotUSB:   "usb",
+	TrackSlotRB:    "rekordbox",
 }
 
 // TrackSlot represents the slot that a track is loaded from on the CDJ.

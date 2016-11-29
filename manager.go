@@ -14,7 +14,7 @@ const keepAliveInterval = 1500 * time.Millisecond
 // Length of device announce packets
 const announcePacketLen = 54
 
-// The UDP broadcast address on which device annoucments should be made
+// The UDP broadcast address on which device annoucments should be made.
 var broadcastAddr = &net.UDPAddr{
 	IP:   net.IPv4bcast,
 	Port: 50000,

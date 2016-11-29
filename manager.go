@@ -230,7 +230,7 @@ func (m *NetworkManager) listenForStatus() error {
 			len, _ := m.listenerConn.Read(packet)
 			data := packet[:len]
 
-			// Do something with the packet
+			fmt.Printf("% x\n", data)
 		}
 	}
 

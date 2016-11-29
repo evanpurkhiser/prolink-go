@@ -11,6 +11,9 @@ import (
 // we create on the PRO DJ LINK network.
 const keepAliveInterval = 1500 * time.Millisecond
 
+// How long to wait after before considering a device off the network.
+const deviceTimeout = 10 * time.Second
+
 // Length of device announce packets
 const announcePacketLen = 54
 
@@ -58,11 +61,12 @@ type PlayerID byte
 
 // Device represents a device on the network.
 type Device struct {
-	Name    string
-	ID      PlayerID
-	Type    DeviceType
-	MacAddr net.HardwareAddr
-	IP      net.IP
+	Name       string
+	ID         PlayerID
+	Type       DeviceType
+	MacAddr    net.HardwareAddr
+	IP         net.IP
+	LastActive time.Time
 }
 
 // String returns a string representation of a device.
@@ -115,6 +119,8 @@ func deviceFromAnnouncePacket(packet []byte) (*Device, error) {
 		IP:      net.IP(packet[0x2C : 0x2C+4]),
 	}
 
+	dev.LastActive = time.Now()
+
 	return dev, nil
 }
 
@@ -160,6 +166,103 @@ func newVirtualCDJDevice(iface *net.Interface) (*Device, error) {
 	}
 
 	return virtualCDJ, nil
+}
+
+// DeviceListener is a function that will be called when a change is made to a
+// device. Currently this includes the device being added or removed.
+type DeviceListener func(*Device)
+
+// DeviceManager provides functionality for watching the connection status of
+// PRO DJ LINK devices on the network.
+type DeviceManager struct {
+	delHandlers []DeviceListener
+	addHandlers []DeviceListener
+	devices     map[PlayerID]*Device
+}
+
+// OnDeviceAdded adds a listener that will be triggered when any PRO DJ LINK
+// devices are added to the network.
+func (m *DeviceManager) OnDeviceAdded(fn DeviceListener) {
+	m.addHandlers = append(m.addHandlers, fn)
+}
+
+// OnDeviceRemoved adds a listener that will be triggered when any PRO DJ LINK
+// devices are removed from the network.
+func (m *DeviceManager) OnDeviceRemoved(fn DeviceListener) {
+	m.delHandlers = append(m.delHandlers, fn)
+}
+
+// ActiveDeviceMap returns a mapping of device IDs to their associated devices.
+func (m *DeviceManager) ActiveDeviceMap() map[PlayerID]*Device {
+	return m.devices
+}
+
+// ActiveDevices returns a list of active devices on the PRO DJ LINK network.
+func (m *DeviceManager) ActiveDevices() []*Device {
+	devices := make([]*Device, 0, len(m.devices))
+
+	for _, dev := range m.devices {
+		devices = append(devices, dev)
+	}
+
+	return devices
+}
+
+// activate triggers the DeviceManager to begin watching for device changes on
+// the PRO DJ LINK network.
+func (m *DeviceManager) activate(conn *net.UDPConn) {
+	packet := make([]byte, announcePacketLen)
+
+	timeouts := map[PlayerID]*time.Timer{}
+
+	timeoutTimer := func(dev *Device) {
+		timeouts[dev.ID] = time.NewTimer(deviceTimeout)
+		<-timeouts[dev.ID].C
+
+		// Device timeout expired. No longer active
+		delete(timeouts, dev.ID)
+		delete(m.devices, dev.ID)
+
+		for _, fn := range m.delHandlers {
+			go fn(dev)
+		}
+	}
+
+	announceHandler := func() {
+		conn.Read(packet)
+		dev, err := deviceFromAnnouncePacket(packet)
+		if err != nil {
+			return
+		}
+
+		if dev.Type == DeviceTypeVCDJ {
+			return
+		}
+
+		// Update device keepalive
+		if dev, ok := m.devices[dev.ID]; ok {
+			timeouts[dev.ID].Stop()
+			timeouts[dev.ID].Reset(deviceTimeout)
+			dev.LastActive = time.Now()
+			return
+		}
+
+		// New device
+		m.devices[dev.ID] = dev
+
+		for _, fn := range m.addHandlers {
+			go fn(dev)
+		}
+
+		go timeoutTimer(dev)
+	}
+
+	// Begin listening for announce packets
+	go func() {
+		for {
+			announceHandler()
+		}
+	}()
 }
 
 type NetworkManager struct {

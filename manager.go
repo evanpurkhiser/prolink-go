@@ -73,8 +73,6 @@ func (d *Device) String() string {
 // getAnnouncePacket constructs the announce packet that is sent on the PRO DJ
 // LINK network to announce a devices existence.
 func getAnnouncePacket(dev *Device) []byte {
-	p := make([]byte, 0, announcePacketLen)
-
 	// The name is a 20 byte string
 	name := make([]byte, 20)
 	copy(name[:], []byte(dev.Name))
@@ -95,11 +93,7 @@ func getAnnouncePacket(dev *Device) []byte {
 		unknown2,               // 0x30: 06 byte unknown
 	}
 
-	for _, part := range parts {
-		p = append(p, part...)
-	}
-
-	return p
+	return bytes.Join(parts, nil)
 }
 
 // deviceFromAnnouncePacket constructs a device object given a device

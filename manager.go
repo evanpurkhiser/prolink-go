@@ -103,6 +103,10 @@ func deviceFromAnnouncePacket(packet []byte) (*Device, error) {
 		return nil, fmt.Errorf("Announce packet does not start with expected header")
 	}
 
+	if packet[0x0A] != 0x06 {
+		return nil, fmt.Errorf("Packet is not an announce packet")
+	}
+
 	dev := &Device{
 		Name:    string(packet[0x0C : 0x0c+20]),
 		ID:      PlayerID(packet[0x24]),

@@ -55,14 +55,14 @@ const (
 // DeviceType represents the types of devices on the network.
 type DeviceType byte
 
-// PlayerID represents the ID of the player. For CDJs this is the number
+// DeviceID represents the ID of the device. For CDJs this is the number
 // displayed on screen.
-type PlayerID byte
+type DeviceID byte
 
 // Device represents a device on the network.
 type Device struct {
 	Name       string
-	ID         PlayerID
+	ID         DeviceID
 	Type       DeviceType
 	MacAddr    net.HardwareAddr
 	IP         net.IP
@@ -113,7 +113,7 @@ func deviceFromAnnouncePacket(packet []byte) (*Device, error) {
 
 	dev := &Device{
 		Name:    string(packet[0x0C : 0x0c+20]),
-		ID:      PlayerID(packet[0x24]),
+		ID:      DeviceID(packet[0x24]),
 		Type:    DeviceType(packet[0x25]),
 		MacAddr: net.HardwareAddr(packet[0x26 : 0x26+6]),
 		IP:      net.IP(packet[0x2C : 0x2C+4]),
@@ -159,7 +159,7 @@ func newVirtualCDJDevice(iface *net.Interface) (*Device, error) {
 
 	virtualCDJ := &Device{
 		Name:    "Virtual CDJ",
-		ID:      PlayerID(0x05),
+		ID:      DeviceID(0x05),
 		Type:    DeviceTypeVCDJ,
 		MacAddr: iface.HardwareAddr,
 		IP:      addrs[0].(*net.IPNet).IP,
@@ -177,7 +177,7 @@ type DeviceListener func(*Device)
 type DeviceManager struct {
 	delHandlers []DeviceListener
 	addHandlers []DeviceListener
-	devices     map[PlayerID]*Device
+	devices     map[DeviceID]*Device
 }
 
 // OnDeviceAdded adds a listener that will be triggered when any PRO DJ LINK
@@ -193,7 +193,7 @@ func (m *DeviceManager) OnDeviceRemoved(fn DeviceListener) {
 }
 
 // ActiveDeviceMap returns a mapping of device IDs to their associated devices.
-func (m *DeviceManager) ActiveDeviceMap() map[PlayerID]*Device {
+func (m *DeviceManager) ActiveDeviceMap() map[DeviceID]*Device {
 	return m.devices
 }
 
@@ -213,7 +213,7 @@ func (m *DeviceManager) ActiveDevices() []*Device {
 func (m *DeviceManager) activate(conn *net.UDPConn) {
 	packet := make([]byte, announcePacketLen)
 
-	timeouts := map[PlayerID]*time.Timer{}
+	timeouts := map[DeviceID]*time.Timer{}
 
 	timeoutTimer := func(dev *Device) {
 		timeouts[dev.ID] = time.NewTimer(deviceTimeout)
@@ -268,7 +268,7 @@ func (m *DeviceManager) activate(conn *net.UDPConn) {
 type NetworkManager struct {
 	announceConn *net.UDPConn
 	listenerConn *net.UDPConn
-	knownDevices map[PlayerID]*Device
+	knownDevices map[DeviceID]*Device
 }
 
 func (m *NetworkManager) announceVirtualCDJ() error {
@@ -300,7 +300,7 @@ func (m *NetworkManager) watchDevices() error {
 	packet := make([]byte, announcePacketLen)
 
 	if m.knownDevices == nil {
-		m.knownDevices = map[PlayerID]*Device{}
+		m.knownDevices = map[DeviceID]*Device{}
 	}
 
 	announceListener := func() {

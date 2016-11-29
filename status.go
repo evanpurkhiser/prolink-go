@@ -76,7 +76,7 @@ func (s TrackSlot) String() string {
 
 // CDJStatus represents various details about the current state of the CDJ.
 type CDJStatus struct {
-	PlayerID       PlayerID
+	PlayerID       DeviceID
 	TrackID        uint32
 	PlayState      PlayState
 	IsLive         bool
@@ -104,7 +104,7 @@ func packetToStatus(p []byte) (*CDJStatus, error) {
 	}
 
 	status := &CDJStatus{
-		PlayerID:       PlayerID(p[0x21]),
+		PlayerID:       DeviceID(p[0x21]),
 		TrackID:        b.Uint32(p[0x2C : 0x2C+4]),
 		PlayState:      PlayState(p[0x7B]),
 		TrackSlot:      TrackSlot(p[0x29]),

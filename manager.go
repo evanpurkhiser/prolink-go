@@ -67,7 +67,7 @@ type Device struct {
 
 // String returns a string representation of a device.
 func (d *Device) String() string {
-	return fmt.Sprintf("%s %02d @ %s [%s]", d.Name, d.ID, d.IP.String(), d.MacAddr.String())
+	return fmt.Sprintf("%s %02d @ %s [%s]", d.Name, d.ID, d.IP, d.MacAddr)
 }
 
 // getAnnouncePacket constructs the announce packet that is sent on the PRO DJ

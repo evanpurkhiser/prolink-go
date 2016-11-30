@@ -8,9 +8,9 @@ import (
 
 // Defined device types.
 const (
-	DeviceTypeRB    DeviceType = 0x01
-	DeviceTypeCDJ   DeviceType = 0x02
+	DeviceTypeCDJ   DeviceType = 0x01
 	DeviceTypeMixer DeviceType = 0x03
+	DeviceTypeRB    DeviceType = 0x04
 
 	// DeviceTypeVCDJ is a custom device type that we will use to identify our
 	// Virtual CDJ.

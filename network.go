@@ -81,7 +81,7 @@ func deviceFromAnnouncePacket(packet []byte) (*Device, error) {
 	dev := &Device{
 		Name:    string(packet[0x0C : 0x0c+20]),
 		ID:      DeviceID(packet[0x24]),
-		Type:    DeviceType(packet[0x25]),
+		Type:    DeviceType(packet[0x34]),
 		MacAddr: net.HardwareAddr(packet[0x26 : 0x26+6]),
 		IP:      net.IP(packet[0x2C : 0x2C+4]),
 	}

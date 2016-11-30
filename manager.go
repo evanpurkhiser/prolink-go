@@ -168,6 +168,31 @@ func newVirtualCDJDevice(iface *net.Interface) (*Device, error) {
 	return virtualCDJ, nil
 }
 
+// startVCDJAnnouncer creates a goroutine that will continually announce a
+// virtual CDJ device on the host network.
+func startVCDJAnnouncer(announceConn *net.UDPConn) error {
+	bcastIface, err := getBroadcastInterface()
+	if err != nil {
+		return err
+	}
+
+	virtualCDJ, err := newVirtualCDJDevice(bcastIface)
+	if err != nil {
+		return err
+	}
+
+	announcePacket := getAnnouncePacket(virtualCDJ)
+	announceTicker := time.NewTicker(keepAliveInterval)
+
+	go func() {
+		for range announceTicker.C {
+			announceConn.WriteToUDP(announcePacket, broadcastAddr)
+		}
+	}()
+
+	return nil
+}
+
 // DeviceListener is a function that will be called when a change is made to a
 // device. Currently this includes the device being added or removed.
 type DeviceListener func(*Device)
@@ -180,14 +205,14 @@ type DeviceManager struct {
 	devices     map[DeviceID]*Device
 }
 
-// OnDeviceAdded adds a listener that will be triggered when any PRO DJ LINK
+// OnDeviceAdded registers a listener that will be called when any PRO DJ LINK
 // devices are added to the network.
 func (m *DeviceManager) OnDeviceAdded(fn DeviceListener) {
 	m.addHandlers = append(m.addHandlers, fn)
 }
 
-// OnDeviceRemoved adds a listener that will be triggered when any PRO DJ LINK
-// devices are removed from the network.
+// OnDeviceRemoved registers a listener that will be called when any PRO DJ
+// LINK devices are removed from the network.
 func (m *DeviceManager) OnDeviceRemoved(fn DeviceListener) {
 	m.delHandlers = append(m.delHandlers, fn)
 }
@@ -210,7 +235,7 @@ func (m *DeviceManager) ActiveDevices() []*Device {
 
 // activate triggers the DeviceManager to begin watching for device changes on
 // the PRO DJ LINK network.
-func (m *DeviceManager) activate(conn *net.UDPConn) {
+func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 	packet := make([]byte, announcePacketLen)
 
 	timeouts := map[DeviceID]*time.Timer{}
@@ -229,7 +254,7 @@ func (m *DeviceManager) activate(conn *net.UDPConn) {
 	}
 
 	announceHandler := func() {
-		conn.Read(packet)
+		announceConn.Read(packet)
 		dev, err := deviceFromAnnouncePacket(packet)
 		if err != nil {
 			return
@@ -265,104 +290,112 @@ func (m *DeviceManager) activate(conn *net.UDPConn) {
 	}()
 }
 
-type NetworkManager struct {
-	announceConn *net.UDPConn
-	listenerConn *net.UDPConn
-	knownDevices map[DeviceID]*Device
+func newDeviceManager() *DeviceManager {
+	return &DeviceManager{
+		addHandlers: []DeviceListener{},
+		delHandlers: []DeviceListener{},
+		devices:     map[DeviceID]*Device{},
+	}
 }
 
-func (m *NetworkManager) announceVirtualCDJ() error {
-	bcastIface, err := getBroadcastInterface()
-	if err != nil {
-		return err
-	}
+// StatusHandler is a function that will be called when the status of a CDJ
+// device has changed.
+type StatusHandler func(status *CDJStatus)
 
-	virtualCDJ, err := newVirtualCDJDevice(bcastIface)
-	if err != nil {
-		return err
-	}
-
-	announcePacket := getAnnouncePacket(virtualCDJ)
-	announceTicker := time.NewTicker(keepAliveInterval)
-
-	doAnnoucments := func() {
-		for range announceTicker.C {
-			m.announceConn.WriteToUDP(announcePacket, broadcastAddr)
-		}
-	}
-
-	go doAnnoucments()
-
-	return nil
+// CDJStatusMonitor provides an interface for watching for status updates to
+// CDJ devices on the PRO DJ LINK network.
+type CDJStatusMonitor struct {
+	handlers []StatusHandler
 }
 
-func (m *NetworkManager) watchDevices() error {
-	packet := make([]byte, announcePacketLen)
-
-	if m.knownDevices == nil {
-		m.knownDevices = map[DeviceID]*Device{}
-	}
-
-	announceListener := func() {
-		for {
-			m.announceConn.Read(packet)
-			dev, _ := deviceFromAnnouncePacket(packet)
-
-			// Ignore the virtual CDJ device
-			if dev.Type == DeviceTypeVCDJ {
-				continue
-			}
-
-			// Ignore already accounted for devices
-			if _, ok := m.knownDevices[dev.ID]; ok {
-				continue
-			}
-
-			m.knownDevices[dev.ID] = dev
-
-			fmt.Printf("New Device: %s\n", dev)
-		}
-	}
-
-	go announceListener()
-
-	return nil
+// OnStatusUpdate registers a StatusHandler to be called when any CDJ on the
+// PRO DJ LINK network reports its status.
+func (sm *CDJStatusMonitor) OnStatusUpdate(fn StatusHandler) {
+	sm.handlers = append(sm.handlers, fn)
 }
 
-func (m *NetworkManager) listenForStatus() error {
+// activate triggers the CDJStatusMonitor to begin listening for status packets
+// given a UDP connection to listen on.
+func (sm *CDJStatusMonitor) activate(listenConn *net.UDPConn) {
 	packet := make([]byte, 512)
 
-	listener := func() {
-		for {
-			len, _ := m.listenerConn.Read(packet)
-			data := packet[:len]
+	statusUpdateHandler := func() {
+		n, _ := listenConn.Read(packet)
+		status, err := packetToStatus(packet[:n])
+		if err != nil {
+			return
+		}
 
-			fmt.Printf("% x\n", data)
+		if status == nil {
+			return
+		}
+
+		for _, fn := range sm.handlers {
+			go fn(status)
 		}
 	}
 
-	go listener()
-
-	return nil
+	go func() {
+		for {
+			statusUpdateHandler()
+		}
+	}()
 }
 
-func (m *NetworkManager) Activate() error {
+func newCDJStatusMonitor() *CDJStatusMonitor {
+	return &CDJStatusMonitor{handlers: []StatusHandler{}}
+}
+
+// Network is the priamry API to the PRO DJ LINK network.
+type Network struct {
+	cdjMonitor *CDJStatusMonitor
+	devManager *DeviceManager
+}
+
+// CDJStatusMonitor obtains the CDJStatusMonitor for the network.
+func (n *Network) CDJStatusMonitor() *CDJStatusMonitor {
+	return n.cdjMonitor
+}
+
+// DeviceManager returns the DeviceManager for the network.
+func (n *Network) DeviceManager() *DeviceManager {
+	return n.devManager
+}
+
+// activeNetwork keeps
+var activeNetwork *Network
+
+// Connect connects to the Pioneer PRO DJ LINK network, returning a Network
+// object to interact with the connection.
+func Connect() (*Network, error) {
+	if activeNetwork != nil {
+		return activeNetwork, nil
+	}
+
 	announceConn, err := net.ListenUDP("udp", announceAddr)
 	if err != nil {
-		return fmt.Errorf("Cannot open UDP connection to announce: %s", err)
+		return nil, fmt.Errorf("Cannot open UDP announce connection: %s", err)
 	}
 
 	listenerConn, err := net.ListenUDP("udp", listenerAddr)
 	if err != nil {
-		return fmt.Errorf("Cannot open UDP connection to listen: %s", err)
+		return nil, fmt.Errorf("Cannot open UDP listening connection: %s", err)
 	}
 
-	m.announceConn = announceConn
-	m.listenerConn = listenerConn
+	err = startVCDJAnnouncer(announceConn)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to start Virtual CDJ announcer: %s", err)
+	}
 
-	m.watchDevices()
-	m.announceVirtualCDJ()
-	m.listenForStatus()
+	network := &Network{
+		cdjMonitor: newCDJStatusMonitor(),
+		devManager: newDeviceManager(),
+	}
 
-	return nil
+	network.cdjMonitor.activate(listenerConn)
+	network.devManager.activate(announceConn)
+
+	activeNetwork = network
+
+	return network, nil
 }

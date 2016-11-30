@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"net"
 )
 
 // Status flag bitmasks
@@ -139,4 +140,52 @@ func calcPitch(p []byte) float32 {
 // calcBPM converts a uint16 byte value into a float32 bpm.
 func calcBPM(p []byte) float32 {
 	return float32(binary.BigEndian.Uint16(p)) / 100
+}
+
+// StatusHandler is a function that will be called when the status of a CDJ
+// device has changed.
+type StatusHandler func(status *CDJStatus)
+
+// CDJStatusMonitor provides an interface for watching for status updates to
+// CDJ devices on the PRO DJ LINK network.
+type CDJStatusMonitor struct {
+	handlers []StatusHandler
+}
+
+// OnStatusUpdate registers a StatusHandler to be called when any CDJ on the
+// PRO DJ LINK network reports its status.
+func (sm *CDJStatusMonitor) OnStatusUpdate(fn StatusHandler) {
+	sm.handlers = append(sm.handlers, fn)
+}
+
+// activate triggers the CDJStatusMonitor to begin listening for status packets
+// given a UDP connection to listen on.
+func (sm *CDJStatusMonitor) activate(listenConn *net.UDPConn) {
+	packet := make([]byte, 512)
+
+	statusUpdateHandler := func() {
+		n, _ := listenConn.Read(packet)
+		status, err := packetToStatus(packet[:n])
+		if err != nil {
+			return
+		}
+
+		if status == nil {
+			return
+		}
+
+		for _, fn := range sm.handlers {
+			go fn(status)
+		}
+	}
+
+	go func() {
+		for {
+			statusUpdateHandler()
+		}
+	}()
+}
+
+func newCDJStatusMonitor() *CDJStatusMonitor {
+	return &CDJStatusMonitor{handlers: []StatusHandler{}}
 }

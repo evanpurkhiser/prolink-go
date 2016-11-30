@@ -3,7 +3,8 @@
 This go library provides an API to the Pioneer PRO DJ LINK network. This allows
 you to listen in on and interact with the network in various ways.
 
-Massive thank you to @brunchboy for his work on [dysentery](https://github.com/brunchboy/dysentery).
+Massive thank you to [@brunchboy](https://github.com/brunchboy) for his work on
+[dysentery](https://github.com/brunchboy/dysentery).
 
 [![GoDoc](https://godoc.org/go.evanpurkhiser.com/prolink?status.svg)](https://godoc.org/go.evanpurkhiser.com/prolink)
 

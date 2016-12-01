@@ -167,6 +167,7 @@ func startVCDJAnnouncer(announceConn *net.UDPConn) error {
 type Network struct {
 	cdjMonitor *CDJStatusMonitor
 	devManager *DeviceManager
+	rekordbox  *Rekordbox
 }
 
 // CDJStatusMonitor obtains the CDJStatusMonitor for the network.
@@ -177,6 +178,11 @@ func (n *Network) CDJStatusMonitor() *CDJStatusMonitor {
 // DeviceManager returns the DeviceManager for the network.
 func (n *Network) DeviceManager() *DeviceManager {
 	return n.devManager
+}
+
+// Rekordbox returns the Rekordbox client for the network.
+func (n *Network) Rekordbox() *Rekordbox {
+	return n.rekordbox
 }
 
 // activeNetwork keeps
@@ -205,10 +211,12 @@ func Connect() (*Network, error) {
 	}
 
 	network := &Network{
+		rekordbox:  newRekordbox(),
 		cdjMonitor: newCDJStatusMonitor(),
 		devManager: newDeviceManager(),
 	}
 
+	network.rekordbox.activate(network.devManager)
 	network.cdjMonitor.activate(listenerConn)
 	network.devManager.activate(announceConn)
 

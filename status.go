@@ -96,7 +96,7 @@ type CDJStatus struct {
 func packetToStatus(p []byte) (*CDJStatus, error) {
 	b := binary.BigEndian
 
-	if !bytes.HasPrefix(p, header) {
+	if !bytes.HasPrefix(p, prolinkHeader) {
 		return nil, fmt.Errorf("CDJ status packet does not start with the expected header")
 	}
 

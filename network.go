@@ -36,7 +36,7 @@ var listenerAddr = &net.UDPAddr{
 }
 
 // All UDP packets on the PRO DJ LINK network start with this header.
-var header = []byte{
+var prolinkHeader = []byte{
 	0x51, 0x73, 0x70, 0x74, 0x31,
 	0x57, 0x6d, 0x4a, 0x4f, 0x4c,
 }
@@ -53,7 +53,7 @@ func getAnnouncePacket(dev *Device) []byte {
 	unknown2 := []byte{0x01, 0x00, 0x00, 0x00, 0x01, 0x00}
 
 	parts := [][]byte{
-		header,                 // 0x00: 10 byte header
+		prolinkHeader,          // 0x00: 10 byte header
 		[]byte{0x06, 0x00},     // 0x0A: 02 byte announce packet type
 		name,                   // 0x0c: 20 byte device name
 		unknown1,               // 0x20: 04 byte unknown
@@ -70,7 +70,7 @@ func getAnnouncePacket(dev *Device) []byte {
 // deviceFromAnnouncePacket constructs a device object given a device
 // announcement packet.
 func deviceFromAnnouncePacket(packet []byte) (*Device, error) {
-	if !bytes.HasPrefix(packet, header) {
+	if !bytes.HasPrefix(packet, prolinkHeader) {
 		return nil, fmt.Errorf("Announce packet does not start with expected header")
 	}
 

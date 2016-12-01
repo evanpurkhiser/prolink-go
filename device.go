@@ -14,7 +14,7 @@ const (
 
 	// DeviceTypeVCDJ is a custom device type that we will use to identify our
 	// Virtual CDJ.
-	DeviceTypeVCDJ DeviceType = 0xff
+	DeviceTypeVCDJ DeviceType = 0x08
 )
 
 // DeviceType represents the types of devices on the network.

@@ -139,16 +139,17 @@ func newVirtualCDJDevice(iface *net.Interface) (*Device, error) {
 }
 
 // startVCDJAnnouncer creates a goroutine that will continually announce a
-// virtual CDJ device on the host network.
-func startVCDJAnnouncer(announceConn *net.UDPConn) error {
+// virtual CDJ device on the host network. Returns the Virtual CDJ being
+// announced.
+func startVCDJAnnouncer(announceConn *net.UDPConn) (*Device, error) {
 	bcastIface, err := getBroadcastInterface()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	virtualCDJ, err := newVirtualCDJDevice(bcastIface)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	announcePacket := getAnnouncePacket(virtualCDJ)
@@ -160,7 +161,7 @@ func startVCDJAnnouncer(announceConn *net.UDPConn) error {
 		}
 	}()
 
-	return nil
+	return virtualCDJ, nil
 }
 
 // Network is the priamry API to the PRO DJ LINK network.
@@ -205,7 +206,7 @@ func Connect() (*Network, error) {
 		return nil, fmt.Errorf("Cannot open UDP listening connection: %s", err)
 	}
 
-	err = startVCDJAnnouncer(announceConn)
+	vcdj, err := startVCDJAnnouncer(announceConn)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to start Virtual CDJ announcer: %s", err)
 	}
@@ -216,7 +217,7 @@ func Connect() (*Network, error) {
 		devManager: newDeviceManager(),
 	}
 
-	network.rekordbox.activate(network.devManager)
+	network.rekordbox.activate(network.devManager, vcdj.ID)
 	network.cdjMonitor.activate(listenerConn)
 	network.devManager.activate(announceConn)
 

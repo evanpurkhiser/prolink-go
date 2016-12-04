@@ -30,7 +30,8 @@ func buildPacket(messageID uint32, part []byte) []byte {
 }
 
 // Given a byte array where the first 4 bytes contain the uint32 length of the
-// string convert it to a string type.
+// string (number of runes) followed by a UTF-16 representation of the string,
+// convert it to a string.
 func stringFromUTF16(s []byte) string {
 	size := binary.BigEndian.Uint32(s[:4])
 	s = s[4:][:size*2]

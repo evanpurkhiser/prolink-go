@@ -41,7 +41,7 @@ func stringFromUTF16(s []byte) string {
 		str16Bit = append(str16Bit, binary.BigEndian.Uint16(s[:2]))
 	}
 
-	return string(utf16.Decode(str16Bit))
+	return string(utf16.Decode(str16Bit))[:size-1]
 }
 
 // rbDBServerQueryPort is the consistent port on which we can query rekordbox

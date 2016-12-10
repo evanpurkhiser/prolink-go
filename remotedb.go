@@ -390,7 +390,7 @@ func (rd *RemoteDB) openConnection(dev *Device, addr string) error {
 	identifyParts := [][]byte{
 		rdSeparator,
 
-		// Possibly resets the
+		// Possible mask to reset the message counter (?)
 		[]byte{0xff, 0xff, 0xff, 0xfe},
 
 		// Currently don't know what these bytes do, but they're needed to get

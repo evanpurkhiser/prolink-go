@@ -13,7 +13,7 @@ const (
 	DeviceTypeRB    DeviceType = 0x04
 
 	// DeviceTypeVCDJ is a custom device type that we will use to identify our
-	// Virtual CDJ.
+	// Virtual CDJ. Hopefully this isn't used by other pioneer equipment (?)
 	DeviceTypeVCDJ DeviceType = 0x08
 )
 

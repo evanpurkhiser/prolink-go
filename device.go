@@ -112,8 +112,13 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 
 		// Update device keepalive
 		if dev, ok := m.devices[dev.ID]; ok {
-			timeouts[dev.ID].Stop()
-			timeouts[dev.ID].Reset(deviceTimeout)
+			timeout, ok := timeouts[dev.ID]
+			if !ok {
+				return
+			}
+
+			timeout.Stop()
+			timeout.Reset(deviceTimeout)
 			dev.LastActive = time.Now()
 			return
 		}

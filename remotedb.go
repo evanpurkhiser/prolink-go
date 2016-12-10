@@ -103,11 +103,22 @@ type Track struct {
 	Artwork []byte
 }
 
+// TrackQuery is used to make queries for track metadata.
+type TrackQuery struct {
+	TrackID  uint32
+	Slot     TrackSlot
+	DeviceID DeviceID
+
+	// artworkID will be filled in after the track metadata is queried, this
+	// feild will be needed to lookup the track artwork.
+	artworkID uint32
+}
+
 // RemoteDB provides an interface to talking to the remote database.
 type RemoteDB struct {
-	conn     net.Conn
 	deviceID DeviceID
-	msgCount uint32
+	conns    map[DeviceID]net.Conn
+	msgCount map[DeviceID]uint32
 }
 
 // OnLink adds a handler to be triggered when the DB server becomes available
@@ -116,23 +127,25 @@ func (rd *RemoteDB) OnLink() {
 	// TODO
 }
 
-// IsLinked reports weather the  DB server is available on the network.
-func (rd *RemoteDB) IsLinked() bool {
-	return rd.conn != nil
+// IsLinked reports weather the DB server is available for the given device.
+func (rd *RemoteDB) IsLinked(devID DeviceID) bool {
+	return rd.conns[devID] != nil
 }
 
 // GetTrack queries the remote db for track details given a track ID.
-func (rd *RemoteDB) GetTrack(id uint32) (*Track, error) {
-	if rd.conn == nil {
+func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
+	if rd.conns[q.DeviceID] == nil {
 		return nil, ErrDeviceNotLinked
 	}
 
-	track, err := rd.queryTrackMetadata(id)
+	track, err := rd.queryTrackMetadata(q)
 	if err != nil {
 		return nil, err
 	}
 
-	path, err := rd.queryTrackPath(id)
+	fmt.Println("Got Track", track)
+
+	path, err := rd.queryTrackPath(q)
 	if err != nil {
 		return nil, err
 	}
@@ -144,9 +157,9 @@ func (rd *RemoteDB) GetTrack(id uint32) (*Track, error) {
 		return track, nil
 	}
 
-	artID := binary.BigEndian.Uint32(track.Artwork)
+	q.artworkID = binary.BigEndian.Uint32(track.Artwork)
 
-	artwork, err := rd.queryArtwork(artID)
+	artwork, err := rd.queryArtwork(q)
 	if err != nil {
 		return nil, err
 	}
@@ -162,12 +175,12 @@ func (rd *RemoteDB) GetTrack(id uint32) (*Track, error) {
 //
 // Note that the Artwork ID is populated in the Artwork field, as this value is
 // returned with the track metadata and is needed to lookup the artwork.
-func (rd *RemoteDB) queryTrackMetadata(id uint32) (*Track, error) {
+func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
 	trackID := make([]byte, 4)
-	binary.BigEndian.PutUint32(trackID, id)
+	binary.BigEndian.PutUint32(trackID, q.TrackID)
 
 	dvID := byte(rd.deviceID)
-	slot := byte(TrackSlotRB)
+	slot := byte(q.Slot)
 
 	part1 := []byte{
 		0x10, 0x20, 0x02, 0x0f, 0x02, 0x14, 0x00, 0x00,
@@ -187,7 +200,7 @@ func (rd *RemoteDB) queryTrackMetadata(id uint32) (*Track, error) {
 		0x00, 0x00, 0x00, 0x00,
 	}
 
-	items, err := rd.getMultimessageResp(part1, part2)
+	items, err := rd.getMultimessageResp(q.DeviceID, part1, part2)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +208,7 @@ func (rd *RemoteDB) queryTrackMetadata(id uint32) (*Track, error) {
 	length := binary.BigEndian.Uint32(items[3][28:32])
 
 	track := &Track{
-		ID:      id,
+		ID:      q.TrackID,
 		Title:   stringFromUTF16(items[0][38:]),
 		Artist:  stringFromUTF16(items[1][38:]),
 		Album:   stringFromUTF16(items[2][38:]),
@@ -210,21 +223,21 @@ func (rd *RemoteDB) queryTrackMetadata(id uint32) (*Track, error) {
 	}
 
 	return track, nil
-
 }
 
 // queryTrackPath looks up the file path of a track in rekordbox.
-func (rd *RemoteDB) queryTrackPath(id uint32) (string, error) {
+func (rd *RemoteDB) queryTrackPath(q *TrackQuery) (string, error) {
 	trackID := make([]byte, 4)
-	binary.BigEndian.PutUint32(trackID, id)
+	binary.BigEndian.PutUint32(trackID, q.TrackID)
 
 	dvID := byte(rd.deviceID)
+	slot := byte(q.Slot)
 
 	part1 := []byte{
 		0x10, 0x21, 0x02, 0x0f, 0x02, 0x14, 0x00, 0x00,
 		0x00, 0x0c, 0x06, 0x06, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, dvID,
-		0x08, 0x04, 0x01, 0x11,
+		0x08, slot, 0x01, 0x11,
 	}
 	part1 = append(part1, trackID...)
 
@@ -232,13 +245,13 @@ func (rd *RemoteDB) queryTrackPath(id uint32) (string, error) {
 		0x10, 0x30, 0x00, 0x0f, 0x06, 0x14, 0x00, 0x00,
 		0x00, 0x0c, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, dvID,
-		0x08, 0x04, 0x01, 0x11, 0x00, 0x00, 0x00, 0x00,
+		0x08, slot, 0x01, 0x11, 0x00, 0x00, 0x00, 0x00,
 		0x11, 0x00, 0x00, 0x00, 0x06, 0x11, 0x00, 0x00,
 		0x00, 0x00, 0x11, 0x00, 0x00, 0x00, 0x06, 0x11,
 		0x00, 0x00, 0x00, 0x00,
 	}
 
-	items, err := rd.getMultimessageResp(part1, part2)
+	items, err := rd.getMultimessageResp(q.DeviceID, part1, part2)
 	if err != nil {
 		return "", err
 	}
@@ -249,31 +262,31 @@ func (rd *RemoteDB) queryTrackPath(id uint32) (string, error) {
 // getMultimessageResp is used for queries that that multiple packets to setup
 // and respond with mult-section bodies that can be split on the rbSection
 // delimiter.
-func (rd *RemoteDB) getMultimessageResp(p1, p2 []byte) ([][]byte, error) {
+func (rd *RemoteDB) getMultimessageResp(devID DeviceID, p1, p2 []byte) ([][]byte, error) {
 	// Part one of query
-	packet := buildPacket(rd.msgCount, p1)
+	packet := buildPacket(rd.msgCount[devID], p1)
 
-	if err := rd.sendMessage(packet); err != nil {
+	if err := rd.sendMessage(devID, packet); err != nil {
 		return nil, fmt.Errorf("Multipart query failed: %s", err)
 	}
 
 	// This data doesn't seem useful, there *should* be 42 bytes of it
-	io.CopyN(ioutil.Discard, rd.conn, 42)
+	io.CopyN(ioutil.Discard, rd.conns[devID], 42)
 
 	// Part two of query
-	packet = buildPacket(rd.msgCount, p2)
+	packet = buildPacket(rd.msgCount[devID], p2)
 
 	// As far as I can tell, these multi-section packets *do not* have a length
 	// marker for bytes in the message, or even how many sections they will
 	// have. So for now, look for the 'final section' which seems to always be
 	// empty. We can reuse buildPacket here even though this is not a packet.
-	finalSection := buildPacket(rd.msgCount, []byte{
+	finalSection := buildPacket(rd.msgCount[devID], []byte{
 		0x10, 0x42, 0x01, 0x0f, 0x00, 0x14, 0x00, 0x00, 0x00,
 		0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00,
 	})
 
-	if err := rd.sendMessage(packet); err != nil {
+	if err := rd.sendMessage(devID, packet); err != nil {
 		return nil, fmt.Errorf("Multipart query failed: %s", err)
 	}
 
@@ -281,7 +294,7 @@ func (rd *RemoteDB) getMultimessageResp(p1, p2 []byte) ([][]byte, error) {
 	full := []byte{}
 
 	for !bytes.HasSuffix(full, finalSection) {
-		n, err := rd.conn.Read(part)
+		n, err := rd.conns[devID].Read(part)
 		if err != nil {
 			return nil, fmt.Errorf("Could not read multipart response: %s", err)
 		}
@@ -302,23 +315,24 @@ func (rd *RemoteDB) getMultimessageResp(p1, p2 []byte) ([][]byte, error) {
 }
 
 // queryArtwork requests artwork of a specific ID from the remote database.
-func (rd *RemoteDB) queryArtwork(id uint32) ([]byte, error) {
+func (rd *RemoteDB) queryArtwork(q *TrackQuery) ([]byte, error) {
 	artID := make([]byte, 4)
-	binary.BigEndian.PutUint32(artID, id)
+	binary.BigEndian.PutUint32(artID, q.artworkID)
 
 	dvID := byte(rd.deviceID)
+	slot := byte(q.Slot)
 
 	part := []byte{
 		0x10, 0x20, 0x03, 0x0f, 0x02, 0x14, 0x00, 0x00,
 		0x00, 0x0c, 0x06, 0x06, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, dvID,
-		0x08, 0x04, 0x01, 0x11,
+		0x08, slot, 0x01, 0x11,
 	}
 	part = append(part, artID...)
 
-	packet := buildPacket(rd.msgCount, part)
+	packet := buildPacket(rd.msgCount[q.DeviceID], part)
 
-	if err := rd.sendMessage(packet); err != nil {
+	if err := rd.sendMessage(q.DeviceID, packet); err != nil {
 		return nil, fmt.Errorf("Artwork query failed: %s", err)
 	}
 
@@ -326,7 +340,7 @@ func (rd *RemoteDB) queryArtwork(id uint32) ([]byte, error) {
 	// read up until this value so we know how much more to read after.
 	data := make([]byte, 52)
 
-	_, err := rd.conn.Read(data)
+	_, err := rd.conns[q.DeviceID].Read(data)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +348,7 @@ func (rd *RemoteDB) queryArtwork(id uint32) ([]byte, error) {
 	imgLen := binary.BigEndian.Uint32(data[48:52])
 	img := make([]byte, int(imgLen))
 
-	_, err = io.ReadFull(rd.conn, img)
+	_, err = io.ReadFull(rd.conns[q.DeviceID], img)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to read artwork data stream: %s", err)
 	}
@@ -344,12 +358,12 @@ func (rd *RemoteDB) queryArtwork(id uint32) ([]byte, error) {
 
 // sendMessage writes to the open connection and increments the message
 // counter.
-func (rd *RemoteDB) sendMessage(m []byte) error {
-	if _, err := rd.conn.Write(m); err != nil {
+func (rd *RemoteDB) sendMessage(devID DeviceID, m []byte) error {
+	if _, err := rd.conns[devID].Write(m); err != nil {
 		return err
 	}
 
-	rd.msgCount++
+	rd.msgCount[devID]++
 
 	return nil
 }
@@ -358,7 +372,7 @@ func (rd *RemoteDB) sendMessage(m []byte) error {
 // which the remote database is presumed to be running. This sends the
 // appropriate packets to initialize the communication between a fake device
 // (this host) and the remote database.
-func (rd *RemoteDB) openConnection(addr string) error {
+func (rd *RemoteDB) openConnection(dev *Device, addr string) error {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		return err
@@ -400,8 +414,8 @@ func (rd *RemoteDB) openConnection(addr string) error {
 	// No need to keep this response, but it *should be 42 bytes
 	io.CopyN(ioutil.Discard, conn, 42)
 
-	rd.conn = conn
-	rd.msgCount = 1
+	rd.conns[dev.ID] = conn
+	rd.msgCount[dev.ID] = 1
 
 	return nil
 }
@@ -420,16 +434,23 @@ func (rd *RemoteDB) activate(dm *DeviceManager, deviceID DeviceID) {
 			return
 		}
 
-		addr, err := getRemoteDBServerAddr(net.ParseIP("192.168.1.3"))
+		fmt.Printf("Connecting to device: %s\n", dev)
+
+		addr, err := getRemoteDBServerAddr(dev.IP)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		rd.openConnection(addr)
+		fmt.Printf("for %s got %s\n", dev, addr)
+
+		rd.openConnection(dev, addr)
 	})
 }
 
 func newRemoteDB() *RemoteDB {
-	return &RemoteDB{}
+	return &RemoteDB{
+		conns:    map[DeviceID]net.Conn{},
+		msgCount: map[DeviceID]uint32{},
+	}
 }

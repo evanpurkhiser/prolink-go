@@ -94,6 +94,20 @@ type CDJStatus struct {
 	PacketNum      uint32
 }
 
+// TrackQuery constructs a track query object from the CDJStatus. If no track
+// is currently provided in the CDJStatus nil will be returned.
+func (s *CDJStatus) TrackQuery() *TrackQuery {
+	if s.TrackID == 0 {
+		return nil
+	}
+
+	return &TrackQuery{
+		DeviceID: s.TrackDevice,
+		Slot:     s.TrackSlot,
+		TrackID:  s.TrackID,
+	}
+}
+
 func packetToStatus(p []byte) (*CDJStatus, error) {
 	b := binary.BigEndian
 

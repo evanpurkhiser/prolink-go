@@ -136,7 +136,7 @@ func newVirtualCDJDevice(iface *net.Interface) (*Device, error) {
 
 	virtualCDJ := &Device{
 		Name:    "Virtual CDJ",
-		ID:      DeviceID(0x05),
+		ID:      DeviceID(0x04),
 		Type:    DeviceTypeVCDJ,
 		MacAddr: iface.HardwareAddr,
 		IP:      addrs[0].(*net.IPNet).IP,

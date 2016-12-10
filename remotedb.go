@@ -433,7 +433,7 @@ func (rd *RemoteDB) activate(dm *DeviceManager, deviceID DeviceID) {
 	// it won't always be available OR figure out how to tell when it does
 	// become available.
 	dm.OnDeviceAdded(func(dev *Device) {
-		if dev.Type != DeviceTypeRB {
+		if dev.Type != DeviceTypeRB && dev.Type != DeviceTypeCDJ {
 			return
 		}
 

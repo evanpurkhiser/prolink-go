@@ -46,7 +46,7 @@ func main() {
 
 	dm := network.DeviceManager()
 	dj := network.CDJStatusMonitor()
-	rb := network.Rekordbox()
+	rb := network.RemoteDB()
 
 	dm.OnDeviceAdded(func(dev *prolink.Device) {
 		fmt.Printf("[+]: %s\n", dev)

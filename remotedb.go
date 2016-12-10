@@ -11,20 +11,21 @@ import (
 	"unicode/utf16"
 )
 
-// ErrNoLinkedRekordbox is returned by Rekordbox if no rekordbox is on the network
-var ErrNoLinkedRekordbox = fmt.Errorf("No linked Rekordbox on network")
+// ErrDeviceNotLinked is returned by RemoteDB if the device being queried is
+// not currently 'linked' on the network.
+var ErrDeviceNotLinked = fmt.Errorf("The device is not linked on the network")
 
-// rbSeparator is a 6 byte marker used in TCP packets sent sent and received
-// from the rekordbox db server. It's not particular known exactly what this
+// rdSeparator is a 6 byte marker used in TCP packets sent sent and received
+// from the remote db server. It's not particular known exactly what this
 // value is for, but in some packets it seems to be used as a field separator.
-var rbSeparator = []byte{0x11, 0x87, 0x23, 0x49, 0xae, 0x11}
+var rdSeparator = []byte{0x11, 0x87, 0x23, 0x49, 0xae, 0x11}
 
-// buildPacket constructs a packet to be sent to rekordbox.
+// buildPacket constructs a packet to be sent to remote database.
 func buildPacket(messageID uint32, part []byte) []byte {
 	count := make([]byte, 4)
 	binary.BigEndian.PutUint32(count, messageID)
 
-	header := bytes.Join([][]byte{rbSeparator, count}, nil)
+	header := bytes.Join([][]byte{rdSeparator, count}, nil)
 
 	return append(header, part...)
 }
@@ -44,14 +45,14 @@ func stringFromUTF16(s []byte) string {
 	return string(utf16.Decode(str16Bit))[:size-1]
 }
 
-// rbDBServerQueryPort is the consistent port on which we can query rekordbox
-// for the port to connect to to communicate with the database server.
+// rbDBServerQueryPort is the consistent port on which we can query the remote
+// db server for the port to connect to to communicate with it.
 const rbDBServerQueryPort = 12523
 
-// getRemoteDBServerAddr queries rekordbox for the port that the rekordbox
-// remote database server is listening on for requests.
-func getRemoteDBServerAddr(rekordboxIP net.IP) (string, error) {
-	addr := fmt.Sprintf("%s:%d", rekordboxIP, rbDBServerQueryPort)
+// getRemoteDBServerAddr queries the remote device for the port that the remote
+// database server is listening on for requests.
+func getRemoteDBServerAddr(deviceIP net.IP) (string, error) {
+	addr := fmt.Sprintf("%s:%d", deviceIP, rbDBServerQueryPort)
 
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
@@ -84,10 +85,10 @@ func getRemoteDBServerAddr(rekordboxIP net.IP) (string, error) {
 
 	port := binary.BigEndian.Uint16(data)
 
-	return fmt.Sprintf("%s:%d", rekordboxIP, port), nil
+	return fmt.Sprintf("%s:%d", deviceIP, port), nil
 }
 
-// Track contains track information retrieved from rekordbox.
+// Track contains track information retrieved from the remote database.
 type Track struct {
 	ID      uint32
 	Path    string
@@ -102,36 +103,36 @@ type Track struct {
 	Artwork []byte
 }
 
-// Rekordbox provides an interface to talking to the rekordbox remote database.
-type Rekordbox struct {
+// RemoteDB provides an interface to talking to the remote database.
+type RemoteDB struct {
 	conn     net.Conn
 	deviceID DeviceID
 	msgCount uint32
 }
 
-// OnLink adds a handler to be triggered when the Rekordbox DB server becomes
-// available on the network.
-func (rb *Rekordbox) OnLink() {
+// OnLink adds a handler to be triggered when the DB server becomes available
+// on the network.
+func (rd *RemoteDB) OnLink() {
 	// TODO
 }
 
-// IsLinked reports weather the Rekordbox DB server is available on the network.
-func (rb *Rekordbox) IsLinked() bool {
-	return rb.conn != nil
+// IsLinked reports weather the  DB server is available on the network.
+func (rd *RemoteDB) IsLinked() bool {
+	return rd.conn != nil
 }
 
-// GetTrack queries Rekordbox for track details given a Rekordbox track ID.
-func (rb *Rekordbox) GetTrack(id uint32) (*Track, error) {
-	if rb.conn == nil {
-		return nil, ErrNoLinkedRekordbox
+// GetTrack queries the remote db for track details given a track ID.
+func (rd *RemoteDB) GetTrack(id uint32) (*Track, error) {
+	if rd.conn == nil {
+		return nil, ErrDeviceNotLinked
 	}
 
-	track, err := rb.queryTrackMetadata(id)
+	track, err := rd.queryTrackMetadata(id)
 	if err != nil {
 		return nil, err
 	}
 
-	path, err := rb.queryTrackPath(id)
+	path, err := rd.queryTrackPath(id)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +146,7 @@ func (rb *Rekordbox) GetTrack(id uint32) (*Track, error) {
 
 	artID := binary.BigEndian.Uint32(track.Artwork)
 
-	artwork, err := rb.queryArtwork(artID)
+	artwork, err := rd.queryArtwork(artID)
 	if err != nil {
 		return nil, err
 	}
@@ -155,17 +156,17 @@ func (rb *Rekordbox) GetTrack(id uint32) (*Track, error) {
 	return track, nil
 }
 
-// queryTrackMetadata queries rekordbox for various metadata about a track,
-// returing a sparse Track object. The track Path and Artwork must be looked up
-// as separate queries.
+// queryTrackMetadata queries the rmote database for various metadata about a
+// track, returing a sparse Track object. The track Path and Artwork must be
+// looked up as separate queries.
 //
 // Note that the Artwork ID is populated in the Artwork field, as this value is
 // returned with the track metadata and is needed to lookup the artwork.
-func (rb *Rekordbox) queryTrackMetadata(id uint32) (*Track, error) {
+func (rd *RemoteDB) queryTrackMetadata(id uint32) (*Track, error) {
 	trackID := make([]byte, 4)
 	binary.BigEndian.PutUint32(trackID, id)
 
-	dvID := byte(rb.deviceID)
+	dvID := byte(rd.deviceID)
 	slot := byte(TrackSlotRB)
 
 	part1 := []byte{
@@ -186,7 +187,7 @@ func (rb *Rekordbox) queryTrackMetadata(id uint32) (*Track, error) {
 		0x00, 0x00, 0x00, 0x00,
 	}
 
-	items, err := rb.getMultimessageResp(part1, part2)
+	items, err := rd.getMultimessageResp(part1, part2)
 	if err != nil {
 		return nil, err
 	}
@@ -213,11 +214,11 @@ func (rb *Rekordbox) queryTrackMetadata(id uint32) (*Track, error) {
 }
 
 // queryTrackPath looks up the file path of a track in rekordbox.
-func (rb *Rekordbox) queryTrackPath(id uint32) (string, error) {
+func (rd *RemoteDB) queryTrackPath(id uint32) (string, error) {
 	trackID := make([]byte, 4)
 	binary.BigEndian.PutUint32(trackID, id)
 
-	dvID := byte(rb.deviceID)
+	dvID := byte(rd.deviceID)
 
 	part1 := []byte{
 		0x10, 0x21, 0x02, 0x0f, 0x02, 0x14, 0x00, 0x00,
@@ -237,7 +238,7 @@ func (rb *Rekordbox) queryTrackPath(id uint32) (string, error) {
 		0x00, 0x00, 0x00, 0x00,
 	}
 
-	items, err := rb.getMultimessageResp(part1, part2)
+	items, err := rd.getMultimessageResp(part1, part2)
 	if err != nil {
 		return "", err
 	}
@@ -248,31 +249,31 @@ func (rb *Rekordbox) queryTrackPath(id uint32) (string, error) {
 // getMultimessageResp is used for queries that that multiple packets to setup
 // and respond with mult-section bodies that can be split on the rbSection
 // delimiter.
-func (rb *Rekordbox) getMultimessageResp(p1, p2 []byte) ([][]byte, error) {
+func (rd *RemoteDB) getMultimessageResp(p1, p2 []byte) ([][]byte, error) {
 	// Part one of query
-	packet := buildPacket(rb.msgCount, p1)
+	packet := buildPacket(rd.msgCount, p1)
 
-	if err := rb.sendMessage(packet); err != nil {
+	if err := rd.sendMessage(packet); err != nil {
 		return nil, fmt.Errorf("Multipart query failed: %s", err)
 	}
 
 	// This data doesn't seem useful, there *should* be 42 bytes of it
-	io.CopyN(ioutil.Discard, rb.conn, 42)
+	io.CopyN(ioutil.Discard, rd.conn, 42)
 
 	// Part two of query
-	packet = buildPacket(rb.msgCount, p2)
+	packet = buildPacket(rd.msgCount, p2)
 
 	// As far as I can tell, these multi-section packets *do not* have a length
 	// marker for bytes in the message, or even how many sections they will
 	// have. So for now, look for the 'final section' which seems to always be
 	// empty. We can reuse buildPacket here even though this is not a packet.
-	finalSection := buildPacket(rb.msgCount, []byte{
+	finalSection := buildPacket(rd.msgCount, []byte{
 		0x10, 0x42, 0x01, 0x0f, 0x00, 0x14, 0x00, 0x00, 0x00,
 		0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00,
 	})
 
-	if err := rb.sendMessage(packet); err != nil {
+	if err := rd.sendMessage(packet); err != nil {
 		return nil, fmt.Errorf("Multipart query failed: %s", err)
 	}
 
@@ -280,7 +281,7 @@ func (rb *Rekordbox) getMultimessageResp(p1, p2 []byte) ([][]byte, error) {
 	full := []byte{}
 
 	for !bytes.HasSuffix(full, finalSection) {
-		n, err := rb.conn.Read(part)
+		n, err := rd.conn.Read(part)
 		if err != nil {
 			return nil, fmt.Errorf("Could not read multipart response: %s", err)
 		}
@@ -289,7 +290,7 @@ func (rb *Rekordbox) getMultimessageResp(p1, p2 []byte) ([][]byte, error) {
 	}
 
 	// Break into sections (keep only interesting ones
-	sections := bytes.Split(full, rbSeparator)[2:]
+	sections := bytes.Split(full, rdSeparator)[2:]
 	sections = sections[:len(sections)-1]
 
 	// Remove uint32 message counter from each section
@@ -300,12 +301,12 @@ func (rb *Rekordbox) getMultimessageResp(p1, p2 []byte) ([][]byte, error) {
 	return sections, nil
 }
 
-// queryArtwork requests artwork of a specific ID from rekordbox.
-func (rb *Rekordbox) queryArtwork(id uint32) ([]byte, error) {
+// queryArtwork requests artwork of a specific ID from the remote database.
+func (rd *RemoteDB) queryArtwork(id uint32) ([]byte, error) {
 	artID := make([]byte, 4)
 	binary.BigEndian.PutUint32(artID, id)
 
-	dvID := byte(rb.deviceID)
+	dvID := byte(rd.deviceID)
 
 	part := []byte{
 		0x10, 0x20, 0x03, 0x0f, 0x02, 0x14, 0x00, 0x00,
@@ -315,9 +316,9 @@ func (rb *Rekordbox) queryArtwork(id uint32) ([]byte, error) {
 	}
 	part = append(part, artID...)
 
-	packet := buildPacket(rb.msgCount, part)
+	packet := buildPacket(rd.msgCount, part)
 
-	if err := rb.sendMessage(packet); err != nil {
+	if err := rd.sendMessage(packet); err != nil {
 		return nil, fmt.Errorf("Artwork query failed: %s", err)
 	}
 
@@ -325,7 +326,7 @@ func (rb *Rekordbox) queryArtwork(id uint32) ([]byte, error) {
 	// read up until this value so we know how much more to read after.
 	data := make([]byte, 52)
 
-	_, err := rb.conn.Read(data)
+	_, err := rd.conn.Read(data)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +334,7 @@ func (rb *Rekordbox) queryArtwork(id uint32) ([]byte, error) {
 	imgLen := binary.BigEndian.Uint32(data[48:52])
 	img := make([]byte, int(imgLen))
 
-	_, err = io.ReadFull(rb.conn, img)
+	_, err = io.ReadFull(rd.conn, img)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to read artwork data stream: %s", err)
 	}
@@ -343,37 +344,37 @@ func (rb *Rekordbox) queryArtwork(id uint32) ([]byte, error) {
 
 // sendMessage writes to the open connection and increments the message
 // counter.
-func (rb *Rekordbox) sendMessage(m []byte) error {
-	if _, err := rb.conn.Write(m); err != nil {
+func (rd *RemoteDB) sendMessage(m []byte) error {
+	if _, err := rd.conn.Write(m); err != nil {
 		return err
 	}
 
-	rb.msgCount++
+	rd.msgCount++
 
 	return nil
 }
 
 // openConnection initializes the TCP connection to the specified address on
-// which the rekordbox remote DB is presumed to be running. This sends the
+// which the remote database is presumed to be running. This sends the
 // appropriate packets to initialize the communication between a fake device
-// (this host) and rekordbox.
-func (rb *Rekordbox) openConnection(addr string) error {
+// (this host) and the remote database.
+func (rd *RemoteDB) openConnection(addr string) error {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		return err
 	}
 
-	// Begin connection to rekordbox database
+	// Begin connection to the remote database
 	if _, err = conn.Write([]byte{0x11, 0x00, 0x00, 0x00, 0x01}); err != nil {
-		return fmt.Errorf("Failed to connect to rekordbox: %s", err)
+		return fmt.Errorf("Failed to connect to remote database: %s", err)
 	}
 
 	// No need to keep this response, but it *should* be 5 bytes
 	io.CopyN(ioutil.Discard, conn, 5)
 
-	// Send identification to rekordbox
+	// Send identification to the remote database
 	identifyParts := [][]byte{
-		rbSeparator,
+		rdSeparator,
 
 		// Possibly resets the
 		[]byte{0xff, 0xff, 0xff, 0xfe},
@@ -388,29 +389,28 @@ func (rb *Rekordbox) openConnection(addr string) error {
 		},
 
 		// The last byte of the identifier is the device ID that we are assuming
-		// to use to communicate with rekordbox
-		[]byte{byte(rb.deviceID)},
+		// to use to communicate with the remote database
+		[]byte{byte(rd.deviceID)},
 	}
 
 	if _, err = conn.Write(bytes.Join(identifyParts, nil)); err != nil {
-		return fmt.Errorf("Failed to connect to rekordbox: %s", err)
+		return fmt.Errorf("Failed to connect to remote database: %s", err)
 	}
 
 	// No need to keep this response, but it *should be 42 bytes
 	io.CopyN(ioutil.Discard, conn, 42)
 
-	rb.conn = conn
-	rb.msgCount = 1
+	rd.conn = conn
+	rd.msgCount = 1
 
 	return nil
 }
 
-// activate begins actively listening for a rekordbox device to be added to the
-// PRO DJ LINK network, at which time a we will poll to connect to rekordbox,
-// as it must be linked first. When a rekordbox device is removed the
-// connection will be removed.
-func (rb *Rekordbox) activate(dm *DeviceManager, deviceID DeviceID) {
-	rb.deviceID = deviceID
+// activate begins actively listening for devices on the network hat support
+// remote database queries to be added to the PRO DJ LINK network. This
+// maintains adding and removing of device connections.
+func (rd *RemoteDB) activate(dm *DeviceManager, deviceID DeviceID) {
+	rd.deviceID = deviceID
 
 	// TODO: This isn't robust at all, handle polling for the DB server, since
 	// it won't always be available OR figure out how to tell when it does
@@ -426,10 +426,10 @@ func (rb *Rekordbox) activate(dm *DeviceManager, deviceID DeviceID) {
 			return
 		}
 
-		rb.openConnection(addr)
+		rd.openConnection(addr)
 	})
 }
 
-func newRekordbox() *Rekordbox {
-	return &Rekordbox{}
+func newRemoteDB() *RemoteDB {
+	return &RemoteDB{}
 }

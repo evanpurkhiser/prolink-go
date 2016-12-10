@@ -79,6 +79,8 @@ func (s TrackSlot) String() string {
 type CDJStatus struct {
 	PlayerID       DeviceID
 	TrackID        uint32
+	TrackDevice    DeviceID
+	TrackSlot      TrackSlot
 	PlayState      PlayState
 	IsLive         bool
 	IsSync         bool
@@ -89,7 +91,6 @@ type CDJStatus struct {
 	BeatInMeasure  uint8
 	BeatsUntilCue  uint16
 	Beat           uint32
-	TrackSlot      TrackSlot
 	PacketNum      uint32
 }
 
@@ -107,8 +108,9 @@ func packetToStatus(p []byte) (*CDJStatus, error) {
 	status := &CDJStatus{
 		PlayerID:       DeviceID(p[0x21]),
 		TrackID:        b.Uint32(p[0x2C : 0x2C+4]),
-		PlayState:      PlayState(p[0x7B]),
+		TrackDevice:    DeviceID(p[0x28]),
 		TrackSlot:      TrackSlot(p[0x29]),
+		PlayState:      PlayState(p[0x7B]),
 		IsLive:         p[0x89]&statusFlagLive != 0,
 		IsSync:         p[0x89]&statusFlagSync != 0,
 		IsMaster:       p[0x89]&statusFlagMaster != 0,

@@ -154,6 +154,9 @@ func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
 
 	// No artwork, nothing left to do
 	if binary.BigEndian.Uint32(track.Artwork) == 0 {
+		// Empty the 4byte artwork ID so that it matches the empty value.
+		track.Artwork = nil
+
 		return track, nil
 	}
 

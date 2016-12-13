@@ -127,12 +127,24 @@ func newVirtualCDJDevice(iface *net.Interface) (*Device, error) {
 		return nil, err
 	}
 
+	var ipAddress *net.IP
+	for _, addr := range addrs {
+		ipNet, ok := addr.(*net.IPNet)
+		if ok && ipNet.IP.To4() != nil && !ipNet.IP.IsLoopback() {
+			ipAddress = &ipNet.IP
+			break
+		}
+	}
+	if ipAddress == nil {
+		return nil, fmt.Errorf("No IPv4 broadcast interface available")
+	}
+
 	virtualCDJ := &Device{
 		Name:    "Virtual CDJ",
 		ID:      DeviceID(0x04),
 		Type:    DeviceTypeVCDJ,
 		MacAddr: iface.HardwareAddr,
-		IP:      addrs[0].(*net.IPNet).IP,
+		IP:      *ipAddress,
 	}
 
 	return virtualCDJ, nil

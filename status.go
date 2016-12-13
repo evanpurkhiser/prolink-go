@@ -180,7 +180,11 @@ func (sm *CDJStatusMonitor) activate(listenConn io.Reader) {
 	packet := make([]byte, 512)
 
 	statusUpdateHandler := func() {
-		n, _ := listenConn.Read(packet)
+		n, err := listenConn.Read(packet)
+		if err != nil || n == 0 {
+			return
+		}
+
 		status, err := packetToStatus(packet[:n])
 		if err != nil {
 			return

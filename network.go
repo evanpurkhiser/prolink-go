@@ -153,18 +153,8 @@ func newVirtualCDJDevice(iface *net.Interface) (*Device, error) {
 // startVCDJAnnouncer creates a goroutine that will continually announce a
 // virtual CDJ device on the host network. Returns the Virtual CDJ being
 // announced.
-func startVCDJAnnouncer(announceConn *net.UDPConn) (*Device, error) {
-	bcastIface, err := getBroadcastInterface()
-	if err != nil {
-		return nil, err
-	}
-
-	virtualCDJ, err := newVirtualCDJDevice(bcastIface)
-	if err != nil {
-		return nil, err
-	}
-
-	announcePacket := getAnnouncePacket(virtualCDJ)
+func startVCDJAnnouncer(vCDJ *Device, announceConn *net.UDPConn) error {
+	announcePacket := getAnnouncePacket(vCDJ)
 	announceTicker := time.NewTicker(keepAliveInterval)
 
 	go func() {
@@ -173,7 +163,7 @@ func startVCDJAnnouncer(announceConn *net.UDPConn) (*Device, error) {
 		}
 	}()
 
-	return virtualCDJ, nil
+	return nil
 }
 
 // Network is the priamry API to the PRO DJ LINK network.
@@ -213,14 +203,24 @@ func Connect() (*Network, error) {
 		return nil, fmt.Errorf("Cannot open UDP announce connection: %s", err)
 	}
 
-	listenerConn, err := net.ListenUDP("udp", listenerAddr)
+	netIface, err := getBroadcastInterface()
 	if err != nil {
-		return nil, fmt.Errorf("Cannot open UDP listening connection: %s", err)
+		return nil, fmt.Errorf("Failed to get broadcast interface: %s", err)
 	}
 
-	vcdj, err := startVCDJAnnouncer(announceConn)
+	vCDJ, err := newVirtualCDJDevice(netIface)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to construct virtual CDJ: %s", err)
+	}
+
+	err = startVCDJAnnouncer(vCDJ, announceConn)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to start Virtual CDJ announcer: %s", err)
+	}
+
+	listenerConn, err := openListener(netIface, listenerAddr)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to open listener conection: %s", err)
 	}
 
 	network := &Network{
@@ -229,7 +229,7 @@ func Connect() (*Network, error) {
 		devManager: newDeviceManager(),
 	}
 
-	network.remoteDB.activate(network.devManager, vcdj.ID)
+	network.remoteDB.activate(network.devManager, vCDJ.ID)
 	network.cdjMonitor.activate(listenerConn)
 	network.devManager.activate(announceConn)
 

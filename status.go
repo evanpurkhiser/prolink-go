@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"net"
+	"io"
 )
 
 // Status flag bitmasks
@@ -176,7 +176,7 @@ func (sm *CDJStatusMonitor) OnStatusUpdate(fn StatusHandler) {
 
 // activate triggers the CDJStatusMonitor to begin listening for status packets
 // given a UDP connection to listen on.
-func (sm *CDJStatusMonitor) activate(listenConn *net.UDPConn) {
+func (sm *CDJStatusMonitor) activate(listenConn io.Reader) {
 	packet := make([]byte, 512)
 
 	statusUpdateHandler := func() {

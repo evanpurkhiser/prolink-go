@@ -82,8 +82,6 @@ func (m *DeviceManager) ActiveDevices() []*Device {
 // activate triggers the DeviceManager to begin watching for device changes on
 // the PRO DJ LINK network.
 func (m *DeviceManager) activate(announceConn *net.UDPConn) {
-	packet := make([]byte, announcePacketLen)
-
 	timeouts := map[DeviceID]*time.Timer{}
 
 	timeoutTimer := func(dev *Device) {
@@ -100,6 +98,8 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 	}
 
 	announceHandler := func() {
+		packet := make([]byte, announcePacketLen)
+
 		announceConn.Read(packet)
 		dev, err := deviceFromAnnouncePacket(packet)
 		if err != nil {

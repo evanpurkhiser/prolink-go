@@ -29,7 +29,12 @@ func (cl *captureListener) Read(p []byte) (int, error) {
 			continue
 		}
 
-		data := packet.ApplicationLayer().Payload()
+		appLayer := packet.ApplicationLayer()
+		if appLayer == nil {
+			continue
+		}
+
+		data := appLayer.Payload()
 		copy(p, data)
 
 		return len(data), nil

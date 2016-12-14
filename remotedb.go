@@ -16,6 +16,9 @@ import (
 // not currently 'linked' on the network.
 var ErrDeviceNotLinked = fmt.Errorf("The device is not linked on the network")
 
+// TODO: Figure out what packet sequence is needed to read CD metadata.
+var ErrCDUnsupported = fmt.Errorf("Reading metadata from CDs is currently unsupported")
+
 // rdSeparator is a 6 byte marker used in TCP packets sent sent and received
 // from the remote db server. It's not particular known exactly what this
 // value is for, but in some packets it seems to be used as a field separator.
@@ -132,6 +135,10 @@ func (rd *RemoteDB) IsLinked(devID DeviceID) bool {
 func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
 	if rd.conns[q.DeviceID] == nil {
 		return nil, ErrDeviceNotLinked
+	}
+
+	if q.Slot == TrackSlotCD {
+		return nil, ErrCDUnsupported
 	}
 
 	// Synchroize queries as not to distruct the query flow. We could probably

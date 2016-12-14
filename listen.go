@@ -6,7 +6,6 @@ import (
 	"net"
 
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 )
 
@@ -16,19 +15,13 @@ import (
 // This allows the software to run along side other programs that listen for
 // status packets (such as rekordbox).
 type captureListener struct {
-	source  *gopacket.PacketSource
-	dstPort gopacket.Endpoint
+	source *gopacket.PacketSource
 }
 
 // Read implements the io.Reader interface. This method will read a status
 // packet directly off the interface using packet capturing.
 func (cl *captureListener) Read(p []byte) (int, error) {
 	for packet := range cl.source.Packets() {
-		transport := packet.TransportLayer()
-		if transport != nil && transport.TransportFlow().Dst() != cl.dstPort {
-			continue
-		}
-
 		appLayer := packet.ApplicationLayer()
 		if appLayer == nil {
 			continue
@@ -51,14 +44,16 @@ func newCaptureListener(iface *net.Interface, addr *net.UDPAddr) (*captureListen
 		return nil, err
 	}
 
+	// Compile a BPF filter to listen for UDP packets on the given port
+	handle.SetBPFFilter(fmt.Sprintf("udp port %d", addr.Port))
+
+	// We're listening for incoming packets only
+	handle.SetDirection(pcap.DirectionIn)
+
 	src := gopacket.NewPacketSource(handle, handle.LinkType())
 
-	port := layers.UDPPort(addr.Port)
-	portEndpoint := layers.NewUDPPortEndpoint(port)
-
 	listener := captureListener{
-		source:  src,
-		dstPort: portEndpoint,
+		source: src,
 	}
 
 	return &listener, nil

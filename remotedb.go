@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"sync"
 	"time"
 	"unicode/utf16"
 )
@@ -117,6 +118,7 @@ type TrackQuery struct {
 // RemoteDB provides an interface to talking to the remote database.
 type RemoteDB struct {
 	deviceID DeviceID
+	locks    map[DeviceID]*sync.Mutex
 	conns    map[DeviceID]net.Conn
 	msgCount map[DeviceID]uint32
 }
@@ -137,6 +139,12 @@ func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
 	if rd.conns[q.DeviceID] == nil {
 		return nil, ErrDeviceNotLinked
 	}
+
+	// Synchroize queries as not to distruct the query flow. We could probably
+	// be a little more precice about where the locks are, but for now the
+	// entire query is pretty fast, just lock the whole thing.
+	rd.locks[q.DeviceID].Lock()
+	defer rd.locks[q.DeviceID].Unlock()
 
 	track, err := rd.queryTrackMetadata(q)
 	if err != nil {
@@ -417,6 +425,7 @@ func (rd *RemoteDB) openConnection(dev *Device, addr string) error {
 	// No need to keep this response, but it *should be 42 bytes
 	io.CopyN(ioutil.Discard, conn, 42)
 
+	rd.locks[dev.ID] = &sync.Mutex{}
 	rd.conns[dev.ID] = conn
 	rd.msgCount[dev.ID] = 1
 
@@ -453,6 +462,7 @@ func (rd *RemoteDB) activate(dm *DeviceManager, deviceID DeviceID) {
 
 func newRemoteDB() *RemoteDB {
 	return &RemoteDB{
+		locks:    map[DeviceID]*sync.Mutex{},
 		conns:    map[DeviceID]net.Conn{},
 		msgCount: map[DeviceID]uint32{},
 	}

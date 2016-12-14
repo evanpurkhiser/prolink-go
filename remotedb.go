@@ -123,12 +123,6 @@ type RemoteDB struct {
 	msgCount map[DeviceID]uint32
 }
 
-// OnLink adds a handler to be triggered when the DB server becomes available
-// on the network.
-func (rd *RemoteDB) OnLink() {
-	// TODO
-}
-
 // IsLinked reports weather the DB server is available for the given device.
 func (rd *RemoteDB) IsLinked(devID DeviceID) bool {
 	return rd.conns[devID] != nil
@@ -150,8 +144,6 @@ func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println("Got Track", track)
 
 	path, err := rd.queryTrackPath(q)
 	if err != nil {
@@ -379,11 +371,15 @@ func (rd *RemoteDB) sendMessage(devID DeviceID, m []byte) error {
 	return nil
 }
 
-// openConnection initializes the TCP connection to the specified address on
-// which the remote database is presumed to be running. This sends the
+// openConnection initializes the TCP connection to the device. This sends the
 // appropriate packets to initialize the communication between a fake device
 // (this host) and the remote database.
-func (rd *RemoteDB) openConnection(dev *Device, addr string) error {
+func (rd *RemoteDB) openConnection(dev *Device) error {
+	addr, err := getRemoteDBServerAddr(dev.IP)
+	if err != nil {
+		return err
+	}
+
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		return err
@@ -438,25 +434,33 @@ func (rd *RemoteDB) openConnection(dev *Device, addr string) error {
 func (rd *RemoteDB) activate(dm *DeviceManager, deviceID DeviceID) {
 	rd.deviceID = deviceID
 
-	// TODO: This isn't robust at all, handle polling for the DB server, since
-	// it won't always be available OR figure out how to tell when it does
-	// become available.
+	allowedDevices := map[DeviceType]bool{
+		DeviceTypeRB:  true,
+		DeviceTypeCDJ: true,
+	}
+
+	// Cleanup devices removed from the network
+	dm.OnDeviceRemoved(func(dev *Device) {
+		if conn, ok := rd.conns[dev.ID]; ok {
+			conn.Close()
+		}
+
+		delete(rd.conns, dev.ID)
+		delete(rd.locks, dev.ID)
+		delete(rd.msgCount, dev.ID)
+	})
+
+	// Connect to the remote database of new devices on the network
 	dm.OnDeviceAdded(func(dev *Device) {
-		if dev.Type != DeviceTypeRB && dev.Type != DeviceTypeCDJ {
+		// Not all pro-link devices provide the remote DB service
+		if _, ok := allowedDevices[dev.Type]; !ok {
 			return
 		}
 
-		fmt.Printf("Connecting to device: %s\n", dev)
-
-		addr, err := getRemoteDBServerAddr(dev.IP)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		fmt.Printf("for %s got %s\n", dev, addr)
-
-		rd.openConnection(dev, addr)
+		// TODO: Rekordbox does *not* immediately make the remote database
+		// service available. In order for this portion of the code to work,
+		// rekordbox *must* already be running and linked.
+		rd.openConnection(dev)
 	})
 }
 

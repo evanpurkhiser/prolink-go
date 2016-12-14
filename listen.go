@@ -46,7 +46,7 @@ func (cl *captureListener) Read(p []byte) (int, error) {
 // newCaptureListener attempts to create a captureListener. In the case where
 // we cannot sniff the network interface this may fail due to privileges.
 func newCaptureListener(iface *net.Interface, addr *net.UDPAddr) (*captureListener, error) {
-	handle, err := pcap.OpenLive(iface.Name, 1600, true, pcap.BlockForever)
+	handle, err := pcap.OpenLive(iface.Name, 1600, false, pcap.BlockForever)
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"go.evanpurkhiser.com/prolink"
+	"go.evanpurkhiser.com/prolink/trackchange"
 )
 
 func main() {
@@ -12,36 +13,29 @@ func main() {
 
 	dm := network.DeviceManager()
 	dj := network.CDJStatusMonitor()
-	rb := network.RemoteDB()
 
-	dm.OnDeviceAdded(func(dev *prolink.Device) {
+	added := func(dev *prolink.Device) {
 		fmt.Printf("[+]: %s\n", dev)
-	})
+	}
 
-	dm.OnDeviceRemoved(func(dev *prolink.Device) {
+	removed := func(dev *prolink.Device) {
 		fmt.Printf("[-]: %s\n", dev)
-	})
+	}
 
-	lastTrack := map[prolink.DeviceID]uint32{}
+	dm.OnDeviceAdded(prolink.DeviceListenerFunc(added))
+	dm.OnDeviceRemoved(prolink.DeviceListenerFunc(removed))
 
-	dj.OnStatusUpdate(func(s *prolink.CDJStatus) {
-		query := s.TrackQuery()
+	trackChangeConfig := trackchange.Config{
+		AllowedInteruptBeats: 8,
+		BeatsUntilReported:   128,
+	}
 
-		if query == nil || !rb.IsLinked(query.DeviceID) {
-			return
-		}
+	changed := func(devID prolink.DeviceID, trackID uint32) {
+		fmt.Printf("Track has on device %d changed to %d\n", devID, trackID)
+	}
 
-		if s.TrackID == lastTrack[s.PlayerID] {
-			return
-		}
-
-		fmt.Printf("%+v\n", s)
-
-		lastTrack[s.PlayerID] = s.TrackID
-
-		track, err := rb.GetTrack(query)
-		fmt.Println(track, err)
-	})
+	trackChange := trackchange.NewHandler(trackChangeConfig, changed)
+	dj.OnStatusUpdate(trackChange)
 
 	<-make(chan bool)
 }

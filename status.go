@@ -158,9 +158,17 @@ func calcBPM(p []byte) float32 {
 	return float32(binary.BigEndian.Uint16(p)) / 100
 }
 
-// StatusHandler is a function that will be called when the status of a CDJ
-// device has changed.
-type StatusHandler func(status *CDJStatus)
+// A StatusHandler responds to status updates on a CDJ.
+type StatusHandler interface {
+	OnStatusUpdate(*CDJStatus)
+}
+
+// The StatusHandlerFunc is an addapter to allow a function to be used as a
+// StatusHandler.
+type StatusHandlerFunc func(*CDJStatus)
+
+// OnStatusUpdate implements StatusHandler.
+func (f StatusHandlerFunc) OnStatusUpdate(s *CDJStatus) { f(s) }
 
 // CDJStatusMonitor provides an interface for watching for status updates to
 // CDJ devices on the PRO DJ LINK network.
@@ -170,8 +178,8 @@ type CDJStatusMonitor struct {
 
 // OnStatusUpdate registers a StatusHandler to be called when any CDJ on the
 // PRO DJ LINK network reports its status.
-func (sm *CDJStatusMonitor) OnStatusUpdate(fn StatusHandler) {
-	sm.handlers = append(sm.handlers, fn)
+func (sm *CDJStatusMonitor) OnStatusUpdate(h StatusHandler) {
+	sm.handlers = append(sm.handlers, h)
 }
 
 // activate triggers the CDJStatusMonitor to begin listening for status packets
@@ -194,8 +202,8 @@ func (sm *CDJStatusMonitor) activate(listenConn io.Reader) {
 			return
 		}
 
-		for _, fn := range sm.handlers {
-			go fn(status)
+		for _, h := range sm.handlers {
+			go h.OnStatusUpdate(status)
 		}
 	}
 

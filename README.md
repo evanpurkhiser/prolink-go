@@ -20,16 +20,21 @@ network, err := prolink.Connect()
 dm := network.DeviceManager()
 st := network.CDJStatusMonitor()
 
-dm.OnDeviceAdded(func(dev *prolink.Device) {
+added := func(dev *prolink.Device) {
     fmt.Printf("Connected: %s\n", dev)
-})
+}
 
-dm.OnDeviceRemoved(func(dev *prolink.Device) {
+removed := func(dev *prolink.Device) {
     fmt.Printf("Disconected: %s\n", dev)
-})
+}
 
-st.OnStatusUpdate(func(status *prolink.CDJStatus) {
+dm.OnDeviceAdded(prolink.DeviceListenerFunc(added))
+dm.OnDeviceRemoved(prolink.DeviceListenerFunc(removed))
+
+statusChange := func(status *prolink.CDJStatus) {
     // Status packets come every 300ms, or faster depending on what is
     // happening on the CDJ. Do something with them.
-})
+}
+
+st.OnStatusUpdate(prolink.StatusHandlerFunc(statusChange));
 ```

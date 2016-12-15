@@ -39,9 +39,18 @@ func (d *Device) String() string {
 	return fmt.Sprintf("%s %02d @ %s [%s]", d.Name, d.ID, d.IP, d.MacAddr)
 }
 
-// DeviceListener is a function that will be called when a change is made to a
-// device. Currently this includes the device being added or removed.
-type DeviceListener func(*Device)
+// A DeviceListener responds to devices being added and removed from the PRO DJ
+// LINK network.
+type DeviceListener interface {
+	OnChange(*Device)
+}
+
+// The DeviceListenerFunc is an adapater to allow a function to be used as a
+// listener for device changes.
+type DeviceListenerFunc func(*Device)
+
+// OnChange implements the DeviceListener interface.
+func (f DeviceListenerFunc) OnChange(d *Device) { f(d) }
 
 // DeviceManager provides functionality for watching the connection status of
 // PRO DJ LINK devices on the network.
@@ -92,8 +101,8 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 		delete(timeouts, dev.ID)
 		delete(m.devices, dev.ID)
 
-		for _, fn := range m.delHandlers {
-			go fn(dev)
+		for _, h := range m.delHandlers {
+			go h.OnChange(dev)
 		}
 	}
 
@@ -126,8 +135,8 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 		// New device
 		m.devices[dev.ID] = dev
 
-		for _, fn := range m.addHandlers {
-			go fn(dev)
+		for _, h := range m.addHandlers {
+			go h.OnChange(dev)
 		}
 
 		go timeoutTimer(dev)

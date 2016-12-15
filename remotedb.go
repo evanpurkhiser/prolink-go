@@ -447,7 +447,7 @@ func (rd *RemoteDB) activate(dm *DeviceManager, deviceID DeviceID) {
 	}
 
 	// Cleanup devices removed from the network
-	dm.OnDeviceRemoved(func(dev *Device) {
+	onRemove := func(dev *Device) {
 		if conn, ok := rd.conns[dev.ID]; ok {
 			conn.Close()
 		}
@@ -455,10 +455,10 @@ func (rd *RemoteDB) activate(dm *DeviceManager, deviceID DeviceID) {
 		delete(rd.conns, dev.ID)
 		delete(rd.locks, dev.ID)
 		delete(rd.msgCount, dev.ID)
-	})
+	}
 
 	// Connect to the remote database of new devices on the network
-	dm.OnDeviceAdded(func(dev *Device) {
+	onConnect := func(dev *Device) {
 		// Not all pro-link devices provide the remote DB service
 		if _, ok := allowedDevices[dev.Type]; !ok {
 			return
@@ -468,7 +468,10 @@ func (rd *RemoteDB) activate(dm *DeviceManager, deviceID DeviceID) {
 		// service available. In order for this portion of the code to work,
 		// rekordbox *must* already be running and linked.
 		rd.openConnection(dev)
-	})
+	}
+
+	dm.OnDeviceAdded(DeviceListenerFunc(onConnect))
+	dm.OnDeviceRemoved(DeviceListenerFunc(onRemove))
 }
 
 func newRemoteDB() *RemoteDB {

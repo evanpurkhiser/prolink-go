@@ -69,7 +69,7 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 // - A incoming track will immediately be reported if it is on air, playing, and
 //   the last active track has been cued.
 //
-// - A incoming track will be repotred if the active track has not been on air
+// - A incoming track will be reported if the active track has not been on air
 //   or has not been playing for the configured AllowedInterruptBeats.
 //
 // - A incoming track will be reported if it has played consecutively (with
@@ -156,7 +156,7 @@ func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
 	delete(h.interruptCancel, s.PlayerID)
 }
 
-// playStateChange updates the lastPlayTime of the track on the player whos
+// playStateChange updates the lastPlayTime of the track on the player who's
 // status is being reported. This will
 func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 	pid := s.PlayerID
@@ -203,7 +203,7 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	pid := s.PlayerID
 	ls, ok := h.lastStatus[pid]
 
-	// Populate last play state with an empty status packet to initialze
+	// Populate last play state with an empty status packet to initialize
 	if !ok {
 		ls = &prolink.CDJStatus{}
 	}

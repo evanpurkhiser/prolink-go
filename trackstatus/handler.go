@@ -210,7 +210,7 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 			cancelInterupt <- true
 		}
 
-		delete(h.lastStartTime, s.PlayerID)
+		delete(h.lastStartTime, pid)
 		h.reportNextPlayer()
 
 		return

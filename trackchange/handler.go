@@ -45,7 +45,7 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 		handler:         fn,
 		lock:            sync.Mutex{},
 		lastStatus:      map[prolink.DeviceID]*prolink.CDJStatus{},
-		lastStartTime:   map[prolink.DeviceID]*time.Time{},
+		lastStartTime:   map[prolink.DeviceID]time.Time{},
 		interruptCancel: map[prolink.DeviceID]chan bool{},
 		wasReportedLive: map[prolink.DeviceID]bool{},
 	}
@@ -81,7 +81,7 @@ type Handler struct {
 
 	lock            sync.Mutex
 	lastStatus      map[prolink.DeviceID]*prolink.CDJStatus
-	lastStartTime   map[prolink.DeviceID]*time.Time
+	lastStartTime   map[prolink.DeviceID]time.Time
 	interruptCancel map[prolink.DeviceID]chan bool
 	wasReportedLive map[prolink.DeviceID]bool
 }
@@ -107,10 +107,10 @@ func (h *Handler) reportNextPlayer() {
 
 	// Locate the player that's been playing for the longest
 	for pid, lastStartTime := range h.lastStartTime {
-		isEarlier := lastStartTime != nil && lastStartTime.Before(earliestTime)
+		isEarlier := lastStartTime.Before(earliestTime)
 
 		if isEarlier && !h.wasReportedLive[pid] {
-			earliestTime = *lastStartTime
+			earliestTime = lastStartTime
 			earliestPID = pid
 		}
 	}
@@ -141,7 +141,7 @@ func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
 	case <-h.interruptCancel[s.PlayerID]:
 		break
 	case <-timer.C:
-		h.lastStartTime[s.PlayerID] = nil
+		delete(h.lastStartTime, s.PlayerID)
 		h.reportNextPlayer()
 		break
 	}
@@ -161,8 +161,7 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 		cancelInterupt := h.interruptCancel[pid]
 
 		if cancelInterupt == nil {
-			now := time.Now()
-			h.lastStartTime[pid] = &now
+			h.lastStartTime[pid] = time.Now()
 		} else {
 			cancelInterupt <- true
 		}
@@ -176,7 +175,7 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 			cancelInterupt <- true
 		}
 
-		h.lastStartTime[s.PlayerID] = nil
+		delete(h.lastStartTime, s.PlayerID)
 		h.reportNextPlayer()
 
 		return
@@ -226,9 +225,9 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	beatDuration := bpmToDuration(s.TrackBPM, s.SliderPitch)
 	timeTillReport := beatDuration * time.Duration(h.config.BeatsUntilReported)
 
-	lst := h.lastStartTime[pid]
+	lst, ok := h.lastStartTime[pid]
 
-	if lst != nil && lst.Add(timeTillReport).Before(time.Now()) {
+	if ok && lst.Add(timeTillReport).Before(time.Now()) {
 		h.reportPlayer(pid)
 	}
 

@@ -25,7 +25,7 @@ type Config struct {
 	// or playing for it to still be considered active.
 	AllowedInteruptBeats int
 
-	// BeatsUntilActive configures how many beats the track must consecutively
+	// BeatsUntilReported configures how many beats the track must consecutively
 	// be playing for (since the beat it was cued at) until the track is
 	// considered to be active.
 	BeatsUntilReported int
@@ -74,7 +74,7 @@ func NewHandler(config Config, fn TrackChangedHandler) *Handler {
 //
 // - A incoming track will be reported if it has played consecutively (with
 //   AllowedInteruptBeats honored for the incoming track) for the configured
-//   BeatsUntilActive.
+//   BeatsUntilReported.
 type Handler struct {
 	config  Config
 	handler TrackChangedHandler

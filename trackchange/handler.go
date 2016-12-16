@@ -15,9 +15,9 @@ var playingStates = map[prolink.PlayState]bool{
 	prolink.PlayStatePlaying: true,
 }
 
-// TrackChangedHandler is a function that will be called when the player track
+// HandlerFunc is a function that will be called when the player track
 // is considered to be changed.
-type TrackChangedHandler func(prolink.DeviceID, uint32)
+type HandlerFunc func(prolink.DeviceID, uint32)
 
 // Config specifies configuration for the Handler.
 type Config struct {
@@ -39,7 +39,7 @@ func bpmToDuration(bpm, pitch float32) time.Duration {
 }
 
 // NewHandler constructs a new Handler to watch for track changes
-func NewHandler(config Config, fn TrackChangedHandler) *Handler {
+func NewHandler(config Config, fn HandlerFunc) *Handler {
 	handler := Handler{
 		config:          config,
 		handler:         fn,
@@ -77,7 +77,7 @@ func NewHandler(config Config, fn TrackChangedHandler) *Handler {
 //   BeatsUntilReported.
 type Handler struct {
 	config  Config
-	handler TrackChangedHandler
+	handler HandlerFunc
 
 	lock            sync.Mutex
 	lastStatus      map[prolink.DeviceID]*prolink.CDJStatus

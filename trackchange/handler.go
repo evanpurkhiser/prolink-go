@@ -86,6 +86,8 @@ type Handler struct {
 	wasReportedLive map[prolink.DeviceID]bool
 }
 
+// reportPlayer triggers the track change handler if track on the given device
+// has not already been reported live and is currently live.
 func (h *Handler) reportPlayer(pid prolink.DeviceID) {
 	// Track has already been reported
 	if h.wasReportedLive[pid] {
@@ -101,6 +103,8 @@ func (h *Handler) reportPlayer(pid prolink.DeviceID) {
 	h.handler(pid, h.lastStatus[pid].TrackID)
 }
 
+// reportNextPlayer finds the longest playing track that has not been reported
+// live and reports it as live.
 func (h *Handler) reportNextPlayer() {
 	var earliestPID prolink.DeviceID
 	earliestTime := time.Now()
@@ -123,6 +127,9 @@ func (h *Handler) reportNextPlayer() {
 	h.reportPlayer(earliestPID)
 }
 
+// trackMayStop tracks that a track may be stopping. Wait the configured
+// interrupt beat interval and report the next track as live if it has stopped.
+// May be canceld if the track comes back on air.
 func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
 	// track already may stop. Do not start a new waiter.
 	if _, ok := h.interruptCancel[s.PlayerID]; ok {
@@ -149,6 +156,8 @@ func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
 	delete(h.interruptCancel, s.PlayerID)
 }
 
+// playStateChange updates the lastPlayTime of the track on the player whos
+// status is being reported. This will
 func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 	pid := s.PlayerID
 

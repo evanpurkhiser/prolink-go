@@ -156,6 +156,24 @@ func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
 	delete(h.interruptCancel, s.PlayerID)
 }
 
+// trackMayBeFirst checks that no other tracks are currently live and playing,
+// other than the current one who's status is being reported as playing, and
+// will report it as live if this is true.
+func (h *Handler) trackMayBeFirst(s *prolink.CDJStatus) {
+	for _, otherStatus := range h.lastStatus {
+		if otherStatus.PlayerID == s.PlayerID {
+			continue
+		}
+
+		// Another device is already live and playing. This is not the first
+		if otherStatus.IsLive && playingStates[otherStatus.PlayState] {
+			return
+		}
+	}
+
+	h.reportPlayer(s.PlayerID)
+}
+
 // playStateChange updates the lastPlayTime of the track on the player who's
 // status is being reported. This will
 func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
@@ -171,6 +189,7 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 
 		if cancelInterupt == nil {
 			h.lastStartTime[pid] = time.Now()
+			h.trackMayBeFirst(s)
 		} else {
 			cancelInterupt <- true
 		}
@@ -202,6 +221,14 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 
 	pid := s.PlayerID
 	ls, ok := h.lastStatus[pid]
+
+	h.lastStatus[pid] = s
+
+	// If this is the first we've heard from this CDJ and it's live and playing
+	// immediately report it
+	if !ok && s.IsLive && playingStates[s.PlayState] {
+		h.reportPlayer(s.PlayerID)
+	}
 
 	// Populate last play state with an empty status packet to initialize
 	if !ok {
@@ -239,6 +266,4 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	if ok && lst.Add(timeTillReport).Before(time.Now()) {
 		h.reportPlayer(pid)
 	}
-
-	h.lastStatus[pid] = s
 }

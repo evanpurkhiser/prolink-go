@@ -15,6 +15,13 @@ var playingStates = map[prolink.PlayState]bool{
 	prolink.PlayStatePlaying: true,
 }
 
+// These are the states where the track has been stopped
+var stoppingStates = map[prolink.PlayState]bool{
+	prolink.PlayStateEnded:   true,
+	prolink.PlayStateCued:    true,
+	prolink.PlayStateLoading: true,
+}
+
 // HandlerFunc is a function that will be called when the player track
 // is considered to be changed.
 type HandlerFunc func(prolink.DeviceID, uint32)
@@ -197,8 +204,8 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 		return
 	}
 
-	// Track was cued. Immediately promote another track to be reported
-	if wasPlaying && s.PlayState == prolink.PlayStateCued {
+	// Track was stopped. Immediately promote another track to be reported
+	if wasPlaying && stoppingStates[s.PlayState] {
 		if cancelInterupt, ok := h.interruptCancel[pid]; ok {
 			cancelInterupt <- true
 		}

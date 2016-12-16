@@ -121,7 +121,7 @@ func getBroadcastInterface() (*net.Interface, error) {
 
 // newVirtualCDJDevice constructs a Device that can be bound to the network
 // interface provided.
-func newVirtualCDJDevice(iface *net.Interface) (*Device, error) {
+func newVirtualCDJDevice(iface *net.Interface, id DeviceID) (*Device, error) {
 	addrs, err := iface.Addrs()
 	if err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func newVirtualCDJDevice(iface *net.Interface) (*Device, error) {
 
 	virtualCDJ := &Device{
 		Name:    "Virtual CDJ",
-		ID:      DeviceID(0x04),
+		ID:      id,
 		Type:    DeviceTypeVCDJ,
 		MacAddr: iface.HardwareAddr,
 		IP:      *ipAddress,
@@ -208,7 +208,7 @@ func Connect() (*Network, error) {
 		return nil, fmt.Errorf("Failed to get broadcast interface: %s", err)
 	}
 
-	vCDJ, err := newVirtualCDJDevice(netIface)
+	vCDJ, err := newVirtualCDJDevice(netIface, DeviceID(0x04))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to construct virtual CDJ: %s", err)
 	}

@@ -48,13 +48,6 @@ type Config struct {
 	BeatsUntilReported int
 }
 
-// bpmToDuration converts bpm and pitch information into a one beat duration.
-func bpmToDuration(bpm, pitch float32) time.Duration {
-	bps := ((pitch / 100 * bpm) + bpm) / 60
-
-	return time.Duration(float32(time.Second) / bps)
-}
-
 // NewHandler constructs a new Handler to watch for track changes
 func NewHandler(config Config, fn HandlerFunc) *Handler {
 	handler := Handler{
@@ -301,4 +294,11 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	if ok && lst.Add(timeTillReport).Before(time.Now()) {
 		h.reportPlayer(pid)
 	}
+}
+
+// bpmToDuration converts bpm and pitch information into a one beat duration.
+func bpmToDuration(bpm, pitch float32) time.Duration {
+	bps := ((pitch / 100 * bpm) + bpm) / 60
+
+	return time.Duration(float32(time.Second) / bps)
 }

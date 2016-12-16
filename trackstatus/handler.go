@@ -9,6 +9,16 @@ import (
 	"go.evanpurkhiser.com/prolink"
 )
 
+// Status is the status of a track
+type Status string
+
+// Status constants
+const (
+	NowPlaying Status = "now_playing"
+	Stopped    Status = "stopped"
+	ComingSoon Status = "coming_soon"
+)
+
 // These are states where the track is passively playing
 var playingStates = map[prolink.PlayState]bool{
 	prolink.PlayStateLooping: true,
@@ -24,7 +34,7 @@ var stoppingStates = map[prolink.PlayState]bool{
 
 // HandlerFunc is a function that will be called when the player track
 // is considered to be changed.
-type HandlerFunc func(prolink.DeviceID, uint32)
+type HandlerFunc func(prolink.DeviceID, uint32, Status)
 
 // Config specifies configuration for the Handler.
 type Config struct {
@@ -64,6 +74,12 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 // interface to more accurately detect when a track has changed in a mixing
 // situation.
 //
+// The following track statuses are reported:
+//
+// - NowPlaying: The track is considered playing and live to the audiance.
+// - Stopped:    The track was stopped.
+// - ComingSoon: A new track has been loaded.
+//
 // See Config for configuration options.
 //
 // Track changes are detected based on a number of rules:
@@ -73,15 +89,21 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 //   interruption with AllowedInterruptBeats) is considered to be the active
 //   track that incoming tracks will be compared against.
 //
-// - A incoming track will immediately be reported if it is on air, playing, and
-//   the last active track has been cued.
+// - A incoming track will immediately be reported as NowPlaying if it is on
+//   air, playing, and the last active track has been cued.
 //
-// - A incoming track will be reported if the active track has not been on air
-//   or has not been playing for the configured AllowedInterruptBeats.
+// - A incoming track will be reported as NowPlaying if the active track has
+//   not been on air or has not been playing for the configured
+//   AllowedInterruptBeats.
 //
-// - A incoming track will be reported if it has played consecutively (with
-//   AllowedInterruptBeats honored for the incoming track) for the configured
-//   BeatsUntilReported.
+// - A incoming track will be reported as NowPlaying if it has played
+//   consecutively (with AllowedInterruptBeats honored for the incoming track)
+//   for the configured BeatsUntilReported.
+//
+// - A track will be reported as Stopped when it was NowPlaying and was stopped
+//   (cued, reached the end of the track, or a new track was loaded.
+//
+// - A track will be reported as ComingSoon when a new track is selected.
 type Handler struct {
 	config  Config
 	handler HandlerFunc
@@ -107,7 +129,7 @@ func (h *Handler) reportPlayer(pid prolink.DeviceID) {
 
 	h.wasReportedLive[pid] = true
 
-	h.handler(pid, h.lastStatus[pid].TrackID)
+	h.handler(pid, h.lastStatus[pid].TrackID, NowPlaying)
 }
 
 // reportNextPlayer finds the longest playing track that has not been reported
@@ -204,14 +226,16 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 		return
 	}
 
-	// Track was stopped. Immediately promote another track to be reported
-	if wasPlaying && stoppingStates[s.PlayState] {
+	// Track was stopped. Immediately promote another track to be reported and
+	// report the track as being stopped.
+	if wasPlaying && h.wasReportedLive[pid] && stoppingStates[s.PlayState] {
 		if cancelInterupt, ok := h.interruptCancel[pid]; ok {
 			cancelInterupt <- true
 		}
 
 		delete(h.lastStartTime, pid)
 		h.reportNextPlayer()
+		h.handler(pid, s.TrackID, Stopped)
 
 		return
 	}
@@ -234,7 +258,10 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	// If this is the first we've heard from this CDJ and it's live and playing
 	// immediately report it
 	if !ok && s.IsLive && playingStates[s.PlayState] {
+		h.lastStartTime[pid] = time.Now()
 		h.reportPlayer(s.PlayerID)
+
+		return
 	}
 
 	// Populate last play state with an empty status packet to initialize
@@ -258,9 +285,10 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 		}
 	}
 
-	// New track loaded. Reset reported-live flag
+	// New track loaded. Reset reported-live flag and report ComingSoon
 	if ls.TrackID != s.TrackID {
 		h.wasReportedLive[pid] = false
+		h.handler(pid, s.TrackID, ComingSoon)
 	}
 
 	// If the track on this deck has been playing for more than the configured

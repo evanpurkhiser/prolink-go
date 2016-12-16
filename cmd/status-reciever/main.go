@@ -33,8 +33,8 @@ func main() {
 		BeatsUntilReported:    128,
 	}
 
-	changed := func(devID prolink.DeviceID, trackID uint32) {
-		fmt.Printf("Track has on device %d changed to %d\n", devID, trackID)
+	changed := func(devID prolink.DeviceID, track uint32, status trackstatus.Status) {
+		fmt.Printf("Track ID %d on device %d is now in %s\n", track, devID, status)
 	}
 
 	trackStatusHandler := trackstatus.NewHandler(trackChangeConfig, changed)

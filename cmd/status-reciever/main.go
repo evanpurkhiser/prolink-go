@@ -26,8 +26,8 @@ func main() {
 	dm.OnDeviceRemoved(prolink.DeviceListenerFunc(removed))
 
 	trackChangeConfig := trackchange.Config{
-		AllowedInteruptBeats: 8,
-		BeatsUntilReported:   128,
+		AllowedInterruptBeats: 8,
+		BeatsUntilReported:    128,
 	}
 
 	changed := func(devID prolink.DeviceID, trackID uint32) {

@@ -21,9 +21,9 @@ type HandlerFunc func(prolink.DeviceID, uint32)
 
 // Config specifies configuration for the Handler.
 type Config struct {
-	// AllowedInteruptBeats configures how many beats a track may not be live
+	// AllowedInterruptBeats configures how many beats a track may not be live
 	// or playing for it to still be considered active.
-	AllowedInteruptBeats int
+	AllowedInterruptBeats int
 
 	// BeatsUntilReported configures how many beats the track must consecutively
 	// be playing for (since the beat it was cued at) until the track is
@@ -63,17 +63,17 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 //
 // - The track that has been in the play state with the CDJ in the "on air" state
 //   for the longest period of time (allowing for a configurable length of
-//   interruption with AllowedInteruptBeats) is considered to be the active
+//   interruption with AllowedInterruptBeats) is considered to be the active
 //   track that incoming tracks will be compared against.
 //
 // - A incoming track will immediately be reported if it is on air, playing, and
 //   the last active track has been cued.
 //
 // - A incoming track will be repotred if the active track has not been on air
-//   or has not been playing for the configured AllowedInteruptBeats.
+//   or has not been playing for the configured AllowedInterruptBeats.
 //
 // - A incoming track will be reported if it has played consecutively (with
-//   AllowedInteruptBeats honored for the incoming track) for the configured
+//   AllowedInterruptBeats honored for the incoming track) for the configured
 //   BeatsUntilReported.
 type Handler struct {
 	config  Config
@@ -131,9 +131,9 @@ func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
 
 	h.interruptCancel[s.PlayerID] = make(chan bool)
 
-	// Wait for the AllowedInteruptBeats based off the current BPM
+	// Wait for the AllowedInterruptBeats based off the current BPM
 	beatDuration := bpmToDuration(s.TrackBPM, s.SliderPitch)
-	timeout := beatDuration * time.Duration(h.config.AllowedInteruptBeats)
+	timeout := beatDuration * time.Duration(h.config.AllowedInterruptBeats)
 
 	timer := time.NewTimer(timeout)
 

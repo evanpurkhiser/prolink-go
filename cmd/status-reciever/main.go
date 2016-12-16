@@ -9,7 +9,10 @@ import (
 
 func main() {
 	fmt.Println("-> Connecting to pro DJ Link network")
-	network, _ := prolink.Connect()
+	network, err := prolink.Connect()
+	if err != nil {
+		panic(err)
+	}
 
 	dm := network.DeviceManager()
 	dj := network.CDJStatusMonitor()

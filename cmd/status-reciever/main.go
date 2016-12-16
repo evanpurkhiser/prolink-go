@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"go.evanpurkhiser.com/prolink"
-	"go.evanpurkhiser.com/prolink/trackchange"
+	"go.evanpurkhiser.com/prolink/trackstatus"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	dm.OnDeviceAdded(prolink.DeviceListenerFunc(added))
 	dm.OnDeviceRemoved(prolink.DeviceListenerFunc(removed))
 
-	trackChangeConfig := trackchange.Config{
+	trackChangeConfig := trackstatus.Config{
 		AllowedInterruptBeats: 8,
 		BeatsUntilReported:    128,
 	}
@@ -34,8 +34,8 @@ func main() {
 		fmt.Printf("Track has on device %d changed to %d\n", devID, trackID)
 	}
 
-	trackChange := trackchange.NewHandler(trackChangeConfig, changed)
-	dj.OnStatusUpdate(trackChange)
+	trackStatusHandler := trackstatus.NewHandler(trackChangeConfig, changed)
+	dj.OnStatusUpdate(trackStatusHandler)
 
 	<-make(chan bool)
 }

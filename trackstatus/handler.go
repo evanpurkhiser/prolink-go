@@ -1,6 +1,6 @@
-// Package trackchange provides functionality for determining when a track has
+// Package trackstatus provides functionality for determining when a track has
 // changed in a mixing situation.
-package trackchange
+package trackstatus
 
 import (
 	"sync"

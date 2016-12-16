@@ -201,12 +201,12 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	}
 
 	// Play state has changed
-	if ok && ls.PlayState != s.PlayState {
+	if ls.PlayState != s.PlayState {
 		h.playStateChange(ls, s)
 	}
 
 	// On-Air (live) state has changed
-	if ok && ls.IsLive != s.IsLive {
+	if ls.IsLive != s.IsLive {
 		if !s.IsLive {
 			go h.trackMayStop(s)
 		}
@@ -217,7 +217,7 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	}
 
 	// New track loaded. Reset reported-live flag
-	if ok && ls.TrackID != s.TrackID {
+	if ls.TrackID != s.TrackID {
 		h.wasReportedLive[pid] = false
 	}
 

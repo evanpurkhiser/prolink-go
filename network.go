@@ -90,7 +90,7 @@ func deviceFromAnnouncePacket(packet []byte) (*Device, error) {
 
 // getBroadcastInterface returns the network interface that may be used to
 // broadcast UDP packets.
-func getBroadcastInterface() (*net.Interface, error) {
+func getBroadcastInterface(name string) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
@@ -100,6 +100,10 @@ func getBroadcastInterface() (*net.Interface, error) {
 
 	// Find the interface that supports network broadcast
 	for _, possibleIface := range ifaces {
+		if name != "" && possibleIface.Name != name {
+			continue
+		}
+
 		if possibleIface.Flags&net.FlagBroadcast != 0 {
 			iface = &possibleIface
 			break
@@ -179,6 +183,23 @@ func startVCDJAnnouncer(vCDJ *Device, announceConn *net.UDPConn) error {
 	return nil
 }
 
+// Config proves configuration valeus when connecting to the prolink network.
+type Config struct {
+	// NetIface allows you to configure the name of the interface used to
+	// communcate with the prolink network. usually does not need to be set.
+	NetIface string
+
+	// VirtualCDJID is the device ID that should be used when broadcasting the
+	// virtual CDJ. Note that if the device ID is not 1-4 you cannot retrieve
+	// track details via USB.
+	VirtualCDJID DeviceID
+
+	// UseSniffing enables CDJ status to be reported even when another
+	// application has taken exclusive access to the UDP port status packets
+	// are reported on. Very useful when running rekordbox on the same machine.
+	UseSniffing bool
+}
+
 // Network is the priamry API to the PRO DJ LINK network.
 type Network struct {
 	cdjMonitor *CDJStatusMonitor
@@ -206,7 +227,7 @@ var activeNetwork *Network
 
 // Connect connects to the Pioneer PRO DJ LINK network, returning a Network
 // object to interact with the connection.
-func Connect() (*Network, error) {
+func Connect(config Config) (*Network, error) {
 	if activeNetwork != nil {
 		return activeNetwork, nil
 	}
@@ -216,12 +237,12 @@ func Connect() (*Network, error) {
 		return nil, fmt.Errorf("Cannot open UDP announce connection: %s", err)
 	}
 
-	netIface, err := getBroadcastInterface()
+	netIface, err := getBroadcastInterface(config.NetIface)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get broadcast interface: %s", err)
 	}
 
-	vCDJ, err := newVirtualCDJDevice(netIface, DeviceID(0x04))
+	vCDJ, err := newVirtualCDJDevice(netIface, config.VirtualCDJID)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to construct virtual CDJ: %s", err)
 	}
@@ -231,7 +252,7 @@ func Connect() (*Network, error) {
 		return nil, fmt.Errorf("Failed to start Virtual CDJ announcer: %s", err)
 	}
 
-	listenerConn, err := openListener(netIface, listenerAddr)
+	listenerConn, err := openListener(netIface, listenerAddr, config.UseSniffing)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open listener conection: %s", err)
 	}

@@ -59,13 +59,15 @@ func newCaptureListener(iface *net.Interface, addr *net.UDPAddr) (*captureListen
 	return &listener, nil
 }
 
-// openListener attempts to open a listener. If we're unable to listen
-// promiscuously on the interface (allowing other software to also listen for
-// status packets) it will fall back to directly binding to the interface.
-func openListener(iface *net.Interface, addr *net.UDPAddr) (io.Reader, error) {
-	captureListener, err := newCaptureListener(iface, addr)
-	if err == nil {
-		return captureListener, nil
+// openListener crates a status listener connection (returned as an io.Reader).
+// If sniff is enabled we will attempt to listen on the interface using packet
+// capturing, otherwise, we will simply directly bind to the interface.
+func openListener(iface *net.Interface, addr *net.UDPAddr, sniff bool) (io.Reader, error) {
+	if sniff {
+		captureListener, err := newCaptureListener(iface, addr)
+		if err == nil {
+			return captureListener, nil
+		}
 	}
 
 	listenerConn, err := net.ListenUDP("udp", listenerAddr)

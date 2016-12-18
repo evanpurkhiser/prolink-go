@@ -9,7 +9,14 @@ import (
 
 func main() {
 	fmt.Println("-> Connecting to pro DJ Link network")
-	network, err := prolink.Connect()
+
+	config := prolink.Config{
+		NetIface:     "",
+		VirtualCDJID: 0x04,
+		UseSniffing:  false,
+	}
+
+	network, err := prolink.Connect(config)
 	if err != nil {
 		panic(err)
 	}

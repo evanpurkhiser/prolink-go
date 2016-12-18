@@ -15,7 +15,11 @@ import "go.evanpurkhiser.com/prolink"
 ### Basic usage
 
 ```go
-network, err := prolink.Connect()
+config := prolink.Config {
+    VirtualCDJID: 0x04,
+}
+
+network, err := prolink.Connect(config)
 
 dm := network.DeviceManager()
 st := network.CDJStatusMonitor()

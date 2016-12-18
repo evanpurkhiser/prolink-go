@@ -9,7 +9,7 @@ import (
 
 // Status flag bitmasks
 const (
-	statusFlagLive    byte = 1 << 3
+	statusFlagOnAir   byte = 1 << 3
 	statusFlagSync    byte = 1 << 4
 	statusFlagMaster  byte = 1 << 5
 	statusFlagPlaying byte = 1 << 6
@@ -82,7 +82,7 @@ type CDJStatus struct {
 	TrackDevice    DeviceID
 	TrackSlot      TrackSlot
 	PlayState      PlayState
-	IsLive         bool
+	IsOnAir        bool
 	IsSync         bool
 	IsMaster       bool
 	TrackBPM       float32
@@ -125,7 +125,7 @@ func packetToStatus(p []byte) (*CDJStatus, error) {
 		TrackDevice:    DeviceID(p[0x28]),
 		TrackSlot:      TrackSlot(p[0x29]),
 		PlayState:      PlayState(p[0x7B]),
-		IsLive:         p[0x89]&statusFlagLive != 0,
+		IsOnAir:        p[0x89]&statusFlagOnAir != 0,
 		IsSync:         p[0x89]&statusFlagSync != 0,
 		IsMaster:       p[0x89]&statusFlagMaster != 0,
 		TrackBPM:       calcBPM(p[0x92 : 0x92+2]),

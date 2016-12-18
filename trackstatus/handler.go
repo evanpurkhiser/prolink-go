@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.evanpurkhiser.com/prolink"
+	"go.evanpurkhiser.com/prolink/bpm"
 )
 
 // Status is the status of a track
@@ -161,7 +162,7 @@ func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
 	h.interruptCancel[s.PlayerID] = make(chan bool)
 
 	// Wait for the AllowedInterruptBeats based off the current BPM
-	beatDuration := bpmToDuration(s.TrackBPM, s.SliderPitch)
+	beatDuration := bpm.ToDuration(s.TrackBPM, s.SliderPitch)
 	timeout := beatDuration * time.Duration(h.config.AllowedInterruptBeats)
 
 	timer := time.NewTimer(timeout)
@@ -286,7 +287,7 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 
 	// If the track on this deck has been playing for more than the configured
 	// BeatsUntilReported (as calculated given the current BPM) report it
-	beatDuration := bpmToDuration(s.TrackBPM, s.SliderPitch)
+	beatDuration := bpm.ToDuration(s.TrackBPM, s.SliderPitch)
 	timeTillReport := beatDuration * time.Duration(h.config.BeatsUntilReported)
 
 	lst, ok := h.lastStartTime[pid]
@@ -294,11 +295,4 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	if ok && lst.Add(timeTillReport).Before(time.Now()) {
 		h.reportPlayer(pid)
 	}
-}
-
-// bpmToDuration converts bpm and pitch information into a one beat duration.
-func bpmToDuration(bpm, pitch float32) time.Duration {
-	bps := ((pitch / 100 * bpm) + bpm) / 60
-
-	return time.Duration(float32(time.Second) / bps)
 }

@@ -17,12 +17,6 @@ const deviceTimeout = 10 * time.Second
 // Length of device announce packets
 const announcePacketLen = 54
 
-// The UDP broadcast address on which device annoucments should be made.
-var broadcastAddr = &net.UDPAddr{
-	IP:   net.IPv4bcast,
-	Port: 50000,
-}
-
 // The UDP address on which device announcements are recieved.
 var announceAddr = &net.UDPAddr{
 	IP:   net.IPv4zero,
@@ -119,6 +113,24 @@ func getBroadcastInterface() (*net.Interface, error) {
 	return iface, nil
 }
 
+// getBroadcastAddress determines the broadcast address to use for
+// communicating with the device.
+func getBroadcastAddress(dev *Device) *net.UDPAddr {
+	mask := dev.IP.DefaultMask()
+	bcastIPAddr := make(net.IP, net.IPv4len)
+
+	for i, b := range dev.IP.To4() {
+		bcastIPAddr[i] = b | ^mask[i]
+	}
+
+	broadcastAddr := net.UDPAddr{
+		IP:   bcastIPAddr,
+		Port: announceAddr.Port,
+	}
+
+	return &broadcastAddr
+}
+
 // newVirtualCDJDevice constructs a Device that can be bound to the network
 // interface provided.
 func newVirtualCDJDevice(iface *net.Interface, id DeviceID) (*Device, error) {
@@ -154,12 +166,13 @@ func newVirtualCDJDevice(iface *net.Interface, id DeviceID) (*Device, error) {
 // virtual CDJ device on the host network. Returns the Virtual CDJ being
 // announced.
 func startVCDJAnnouncer(vCDJ *Device, announceConn *net.UDPConn) error {
+	broadcastAddrs := getBroadcastAddress(vCDJ)
 	announcePacket := getAnnouncePacket(vCDJ)
 	announceTicker := time.NewTicker(keepAliveInterval)
 
 	go func() {
 		for range announceTicker.C {
-			announceConn.WriteToUDP(announcePacket, broadcastAddr)
+			announceConn.WriteToUDP(announcePacket, broadcastAddrs)
 		}
 	}()
 

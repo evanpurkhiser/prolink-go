@@ -10,14 +10,14 @@ import (
 	"go.evanpurkhiser.com/prolink/bpm"
 )
 
-// Status is the status of a track
-type Status string
+// An Event is a string key for status change events
+type Event string
 
-// Status constants
+// Event constants
 const (
-	NowPlaying Status = "now_playing"
-	Stopped    Status = "stopped"
-	ComingSoon Status = "coming_soon"
+	NowPlaying Event = "now_playing"
+	Stopped    Event = "stopped"
+	ComingSoon Event = "coming_soon"
 )
 
 // These are states where the track is passively playing
@@ -34,8 +34,9 @@ var stoppingStates = map[prolink.PlayState]bool{
 }
 
 // HandlerFunc is a function that will be called when the player track
-// is considered to be changed.
-type HandlerFunc func(prolink.DeviceID, uint32, Status)
+// is considered to be changed. This includes the CDJStatus object that
+// triggered the change.
+type HandlerFunc func(Event, *prolink.CDJStatus)
 
 // Config specifies configuration for the Handler.
 type Config struct {
@@ -123,7 +124,7 @@ func (h *Handler) reportPlayer(pid prolink.DeviceID) {
 
 	h.wasReportedLive[pid] = true
 
-	h.handler(pid, h.lastStatus[pid].TrackID, NowPlaying)
+	h.handler(NowPlaying, h.lastStatus[pid])
 }
 
 // reportNextPlayer finds the longest playing track that has not been reported
@@ -229,7 +230,7 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 
 		delete(h.lastStartTime, pid)
 		h.reportNextPlayer()
-		h.handler(pid, s.TrackID, Stopped)
+		h.handler(Stopped, s)
 
 		return
 	}
@@ -282,7 +283,7 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	// New track loaded. Reset reported-live flag and report ComingSoon
 	if ls.TrackID != s.TrackID {
 		h.wasReportedLive[pid] = false
-		h.handler(pid, s.TrackID, ComingSoon)
+		h.handler(ComingSoon, s)
 	}
 
 	// If the track on this deck has been playing for more than the configured

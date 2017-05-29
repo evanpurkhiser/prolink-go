@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strconv"
 )
 
 // Status flag bitmasks
@@ -106,6 +107,32 @@ func (s *CDJStatus) TrackQuery() *TrackQuery {
 		Slot:     s.TrackSlot,
 		TrackID:  s.TrackID,
 	}
+}
+
+func (s *CDJStatus) String() string {
+	statusText := `Status of Device %d (packet %d)
+  Track  %-9s [from device %d, slot %s]
+  BPM    %-9s [pitch %2.2f%%, effective pitch %2.2f%%]
+  Beat   %-9s [%d/4, %d beats to cue]
+  Status %-9s [synced: %t, onair: %t, master: %t]`
+
+	return fmt.Sprintf(statusText,
+		s.PlayerID,
+		s.PacketNum,
+		strconv.Itoa(int(s.TrackID)),
+		s.TrackDevice,
+		trackSlotLabels[s.TrackSlot],
+		fmt.Sprintf("%2.2f", s.TrackBPM),
+		s.SliderPitch,
+		s.EffectivePitch,
+		strconv.Itoa(int(s.Beat)),
+		s.BeatInMeasure,
+		s.BeatsUntilCue,
+		playStateLabels[s.PlayState],
+		s.IsSync,
+		s.IsOnAir,
+		s.IsMaster,
+	)
 }
 
 func packetToStatus(p []byte) (*CDJStatus, error) {

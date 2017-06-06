@@ -11,11 +11,10 @@ const (
 	DeviceTypeCDJ   DeviceType = 0x01
 	DeviceTypeMixer DeviceType = 0x03
 	DeviceTypeRB    DeviceType = 0x04
-
-	// DeviceTypeVCDJ is a custom device type that we will use to identify our
-	// Virtual CDJ. Hopefully this isn't used by other pioneer equipment (?)
-	DeviceTypeVCDJ DeviceType = 0x08
 )
+
+// VirtualCDJName is the name given to the Virtual CDJ device.
+const VirtualCDJName = "Virtual CDJ"
 
 // DeviceType represents the types of devices on the network.
 type DeviceType byte
@@ -115,7 +114,7 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 			return
 		}
 
-		if dev.Type == DeviceTypeVCDJ {
+		if dev.Name == VirtualCDJName {
 			return
 		}
 

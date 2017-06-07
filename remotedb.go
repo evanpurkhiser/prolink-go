@@ -190,14 +190,15 @@ func (dc *deviceConnection) Open() {
 // Close stops any attempts to connect to the device or closes any open socket
 // connections with the device.
 func (dc *deviceConnection) Close() {
-	dc.disconnect <- true
-	close(dc.disconnect)
+	if dc.disconnect != nil {
+		dc.disconnect <- true
+		close(dc.disconnect)
+	}
 
 	if dc.conn != nil {
 		dc.conn.Close()
+		dc.conn = nil
 	}
-
-	dc.conn = nil
 }
 
 // Track contains track information retrieved from the remote database.

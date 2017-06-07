@@ -16,6 +16,7 @@ import (
 // not currently 'linked' on the network.
 var ErrDeviceNotLinked = fmt.Errorf("The device is not linked on the network")
 
+// ErrCDUnsupported is returned when attempting to read metadata from a CD slot.
 // TODO: Figure out what packet sequence is needed to read CD metadata.
 var ErrCDUnsupported = fmt.Errorf("Reading metadata from CDs is currently unsupported")
 

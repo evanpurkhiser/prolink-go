@@ -72,10 +72,6 @@ st.OnStatusUpdate(prolink.StatusHandlerFunc(statusChange));
    Rekordbox takes exclusive access to the socket used to communicate to the
    CDJs making it impossible to receive track status information
 
- * [[GH-2](https://github.com/EvanPurkhiser/prolink-go/issues/2)] Rekordbox
-   must be started and linked before the software is started, otherwise it will
-   be unable to communicate to rekordbox.
-
  * [[GH-3](https://github.com/EvanPurkhiser/prolink-go/issues/3)] When reading
    track metadata from USB devices some metadata is reported incorrectly.
 

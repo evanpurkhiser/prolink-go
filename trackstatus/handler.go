@@ -230,7 +230,9 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 
 		delete(h.lastStartTime, pid)
 		h.reportNextPlayer()
+
 		h.handler(Stopped, s)
+		h.wasReportedLive[s.PlayerID] = false
 
 		return
 	}

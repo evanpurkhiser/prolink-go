@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"net"
+	"time"
 
 	"go.evanpurkhiser.com/prolink"
 )
@@ -15,15 +15,7 @@ func main() {
 		panic(err)
 	}
 
-	ifaces, _ := net.Interfaces()
-	for _, iface := range ifaces {
-		if iface.Name == "en0" {
-			network.SetInterface(&iface)
-			break
-		}
-	}
-
-	network.SetVirtualCDJID(prolink.DeviceID(0x04))
+	network.AutoConfigure(3 * time.Second)
 
 	dm := network.DeviceManager()
 	dj := network.CDJStatusMonitor()

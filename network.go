@@ -278,6 +278,72 @@ func (n *Network) SetInterface(iface *net.Interface) error {
 	return n.reloadAnnouncer()
 }
 
+// AutoConfigure attempts to configure the two confgiuration parameters of the
+// network.
+//
+// - Determine which interface to announce the Virtual CDJ over by finding
+//   the interface which has a matching net mask to the first CDJ detected on the
+//   network.
+//
+// - Determine the Virtual CDJ ID to assume by looking for the first unused CDJ
+//   ID on the network.
+//
+// wait specifies how long to wait before checking what devices have appeared
+// on the network to determine auto configuration values from.
+func (n *Network) AutoConfigure(wait time.Duration) error {
+	time.Sleep(wait)
+
+	playerIDs := []DeviceID{}
+	var CDJAddr net.IP
+
+	for _, device := range n.devManager.ActiveDevices() {
+		if device.Type != DeviceTypeCDJ {
+			continue
+		}
+
+		playerIDs = append(playerIDs, device.ID)
+		CDJAddr = device.IP
+	}
+
+	if len(playerIDs) == 0 {
+		return fmt.Errorf("Could not autoconfigure network: no CDJs on network")
+	}
+
+	var unusedDeviceID DeviceID
+
+	// Choose an unused ID from the 4 available CDJ slots
+	for _, id := range prolinkIDRange {
+		isUnused := true
+
+		for _, usedID := range playerIDs {
+			if id == usedID {
+				isUnused = false
+			}
+		}
+
+		if isUnused {
+			unusedDeviceID = id
+			break
+		}
+	}
+
+	if unusedDeviceID == 0x0 {
+		return fmt.Errorf("Could not autoconfigure network: No available Virtual CDJ slots")
+	}
+
+	n.SetVirtualCDJID(unusedDeviceID)
+
+	// Determine the matching interface for the CDJ
+	iface, err := getMatchingInterface(CDJAddr)
+	if err != nil {
+		return fmt.Errorf("Could not autoconfigure network: %s", err)
+	}
+
+	n.SetInterface(iface)
+
+	return nil
+}
+
 func (n *Network) reloadAnnouncer() error {
 	if n.TargetInterface == nil || n.VirtualCDJID == 0x0 {
 		return nil

@@ -528,12 +528,16 @@ func (rd *RemoteDB) closeConnection(dev *Device) {
 	delete(rd.conns, dev.ID)
 }
 
+// setRequestingDeviceID specifies what device ID the requests to the remote DB
+// servers should identify themselves as.
+func (rd *RemoteDB) setRequestingDeviceID(deviceID DeviceID) {
+	rd.deviceID = deviceID
+}
+
 // activate begins actively listening for devices on the network hat support
 // remote database queries to be added to the PRO DJ LINK network. This
 // maintains adding and removing of device connections.
-func (rd *RemoteDB) activate(dm *DeviceManager, deviceID DeviceID) {
-	rd.deviceID = deviceID
-
+func (rd *RemoteDB) activate(dm *DeviceManager) {
 	allowedDevices := map[DeviceType]bool{
 		DeviceTypeRB:  true,
 		DeviceTypeCDJ: true,

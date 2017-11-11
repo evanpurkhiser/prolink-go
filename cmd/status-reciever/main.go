@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 
 	"go.evanpurkhiser.com/prolink"
 )
@@ -9,16 +10,20 @@ import (
 func main() {
 	fmt.Println("-> Connecting to pro DJ Link network")
 
-	config := prolink.Config{
-		NetIface:     "",
-		VirtualCDJID: 0x04,
-		UseSniffing:  false,
-	}
-
-	network, err := prolink.Connect(config)
+	network, err := prolink.Connect()
 	if err != nil {
 		panic(err)
 	}
+
+	ifaces, _ := net.Interfaces()
+	for _, iface := range ifaces {
+		if iface.Name == "en0" {
+			network.SetInterface(&iface)
+			break
+		}
+	}
+
+	network.SetVirtualCDJID(prolink.DeviceID(0x04))
 
 	dm := network.DeviceManager()
 	dj := network.CDJStatusMonitor()

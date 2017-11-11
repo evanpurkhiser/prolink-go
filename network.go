@@ -35,6 +35,10 @@ var prolinkHeader = []byte{
 	0x57, 0x6d, 0x4a, 0x4f, 0x4c,
 }
 
+// playerIDrange is the normal set of player IDs that may exist on one prolink
+// network.
+var prolinkIDRange = []DeviceID{0x01, 0x02, 0x03, 0x04}
+
 // getAnnouncePacket constructs the announce packet that is sent on the PRO DJ
 // LINK network to announce a devices existence.
 func getAnnouncePacket(dev *Device) []byte {
@@ -88,33 +92,33 @@ func deviceFromAnnouncePacket(packet []byte) (*Device, error) {
 	return dev, nil
 }
 
-// getBroadcastInterface returns the network interface that may be used to
-// broadcast UDP packets.
-func getBroadcastInterface(name string) (*net.Interface, error) {
+// getMatchingInterface determines the interface that routes the given address
+// by comparing the masked addresses.
+func getMatchingInterface(ip net.IP) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
 
-	var iface *net.Interface
-
-	// Find the interface that supports network broadcast
 	for _, possibleIface := range ifaces {
-		if name != "" && possibleIface.Name != name {
-			continue
+		addrs, err := possibleIface.Addrs()
+		if err != nil {
+			return nil, err
 		}
 
-		if possibleIface.Flags&net.FlagBroadcast != 0 {
-			iface = &possibleIface
-			break
+		for _, addr := range addrs {
+			ifaceIP, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+
+			if ifaceIP.IP.Mask(ifaceIP.Mask).Equal(ip.Mask(ifaceIP.Mask)) {
+				return &possibleIface, nil
+			}
 		}
 	}
 
-	if iface == nil {
-		return nil, fmt.Errorf("No network interface available to broadcast over")
-	}
-
-	return iface, nil
+	return nil, fmt.Errorf("Failed to find matching interface for %s", ip)
 }
 
 // getBroadcastAddress determines the broadcast address to use for
@@ -166,45 +170,75 @@ func newVirtualCDJDevice(iface *net.Interface, id DeviceID) (*Device, error) {
 	return virtualCDJ, nil
 }
 
-// startVCDJAnnouncer creates a goroutine that will continually announce a
-// virtual CDJ device on the host network. Returns the Virtual CDJ being
-// announced.
-func startVCDJAnnouncer(vCDJ *Device, announceConn *net.UDPConn) error {
+// cdjAnnouncer manages announcing a CDJ device on the network. This is usually
+// used to announce a "virtual CDJ" which allows the prolink library to recieve
+// more details from real CDJs on the network.
+type cdjAnnouncer struct {
+	cancel  chan bool
+	running bool
+}
+
+// start creates a goroutine that will continually announce a virtual CDJ
+// device on the host network.
+func (a *cdjAnnouncer) activate(vCDJ *Device, announceConn *net.UDPConn) {
+	if a.running == true {
+		return
+	}
+
 	broadcastAddrs := getBroadcastAddress(vCDJ)
 	announcePacket := getAnnouncePacket(vCDJ)
 	announceTicker := time.NewTicker(keepAliveInterval)
 
 	go func() {
-		for range announceTicker.C {
-			announceConn.WriteToUDP(announcePacket, broadcastAddrs)
+		for {
+			select {
+			case <-a.cancel:
+				return
+			case <-announceTicker.C:
+				announceConn.WriteToUDP(announcePacket, broadcastAddrs)
+			}
 		}
 	}()
 
-	return nil
+	a.running = true
 }
 
-// Config proves configuration valeus when connecting to the prolink network.
-type Config struct {
-	// NetIface allows you to configure the name of the interface used to
-	// communcate with the prolink network. usually does not need to be set.
-	NetIface string
+// stop stops the running announcer
+func (a *cdjAnnouncer) deactivate() {
+	if a.running == true {
+		a.cancel <- true
+	}
+}
 
-	// VirtualCDJID is the device ID that should be used when broadcasting the
-	// virtual CDJ. Note that if the device ID is not 1-4 you cannot retrieve
-	// track details via USB.
-	VirtualCDJID DeviceID
-
-	// UseSniffing enables CDJ status to be reported even when another
-	// application has taken exclusive access to the UDP port status packets
-	// are reported on. Very useful when running rekordbox on the same machine.
-	UseSniffing bool
+func newCDJAnnouncer() *cdjAnnouncer {
+	return &cdjAnnouncer{
+		cancel: make(chan bool),
+	}
 }
 
 // Network is the priamry API to the PRO DJ LINK network.
 type Network struct {
+	announceConn *net.UDPConn
+	listenerConn *net.UDPConn
+
+	announcer  *cdjAnnouncer
 	cdjMonitor *CDJStatusMonitor
 	devManager *DeviceManager
 	remoteDB   *RemoteDB
+
+	// TargetInterface specifies what network interface to broadcast announce
+	// packets for the virtual CDJ on.
+	//
+	// This field should not be reconfigured, use SetInterface instead to
+	// ensure the announce is correctly restarted on the new interface.
+	TargetInterface *net.Interface
+
+	// VirtualCDJID specifies the CDJ Device ID (Player ID) that should be used
+	// when announcing the device.
+	//
+	// This field should not be reconfigured, use SetVirtualCDJID instead to
+	// ensure the announce is correctly restarted on the new interface.
+	VirtualCDJID DeviceID
 }
 
 // CDJStatusMonitor obtains the CDJStatusMonitor for the network.
@@ -222,52 +256,103 @@ func (n *Network) RemoteDB() *RemoteDB {
 	return n.remoteDB
 }
 
-// activeNetwork keeps
+// SetVirtualCDJID configures the CDJ ID (Player ID) that the prolink library
+// should use to identify itself on the network. To correctly access metadata
+// on the network this *must* be in the range from 1-4, and should *not* be a
+// player ID that is already in use by a CDJ, otherwise the CDJ simply will not
+// respond. This is a known issue [1]
+//
+// [1]: https://github.com/EvanPurkhiser/prolink-go/issues/6
+func (n *Network) SetVirtualCDJID(id DeviceID) error {
+	n.VirtualCDJID = id
+	n.remoteDB.setRequestingDeviceID(id)
+
+	return n.reloadAnnouncer()
+}
+
+// SetInterface configures what network interface should be used when
+// announcing the Virtual CDJ.
+func (n *Network) SetInterface(iface *net.Interface) error {
+	n.TargetInterface = iface
+
+	return n.reloadAnnouncer()
+}
+
+func (n *Network) reloadAnnouncer() error {
+	if n.TargetInterface == nil || n.VirtualCDJID == 0x0 {
+		return nil
+	}
+
+	vCDJ, err := newVirtualCDJDevice(n.TargetInterface, n.VirtualCDJID)
+	if err != nil {
+		return fmt.Errorf("Failed to construct virtual CDJ: %s", err)
+	}
+
+	n.announcer.deactivate()
+	n.announcer.activate(vCDJ, n.announceConn)
+
+	return nil
+}
+
+// openUDPConnection connects to the minimum required UDP sockets needed to
+// communicate with the Prolink network.
+func (n *Network) openUDPConnections() error {
+	listenerConn, err := net.ListenUDP("udp", listenerAddr)
+	if err != nil {
+		return fmt.Errorf("Failed to open listener conection: %s", err)
+	}
+
+	n.listenerConn = listenerConn
+
+	announceConn, err := net.ListenUDP("udp", announceAddr)
+	if err != nil {
+		return fmt.Errorf("Cannot open UDP announce connection: %s", err)
+	}
+
+	n.announceConn = announceConn
+
+	return nil
+}
+
+// activeNetwork keeps a reference to the currently connected network.
 var activeNetwork *Network
 
-// Connect connects to the Pioneer PRO DJ LINK network, returning a Network
-// object to interact with the connection.
-func Connect(config Config) (*Network, error) {
+// Connect connects to the Pioneer PRO DJ LINK network, returning the singleton
+// Network object to interact with the connection.
+//
+// Note that after connecting you must configure the virtual CDJ ID and network
+// interface to announce the virtual CDJ on before all functionality of the
+// prolink network will be available, specifically:
+//
+// - CDJs will not broadcast detailed payer information until they recieve the
+//   announce packet and recognize the libraries virtual CDJ as being on the
+//   network.
+//
+// - Any remote DB devices will not respond to metadata queries.
+//
+// Both values may be autodetected or manually configured.
+func Connect() (*Network, error) {
 	if activeNetwork != nil {
 		return activeNetwork, nil
 	}
 
-	announceConn, err := net.ListenUDP("udp", announceAddr)
-	if err != nil {
-		return nil, fmt.Errorf("Cannot open UDP announce connection: %s", err)
-	}
-
-	netIface, err := getBroadcastInterface(config.NetIface)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get broadcast interface: %s", err)
-	}
-
-	vCDJ, err := newVirtualCDJDevice(netIface, config.VirtualCDJID)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to construct virtual CDJ: %s", err)
-	}
-
-	err = startVCDJAnnouncer(vCDJ, announceConn)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to start Virtual CDJ announcer: %s", err)
-	}
-
-	listenerConn, err := openListener(netIface, listenerAddr, config.UseSniffing)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to open listener conection: %s", err)
-	}
-
-	network := &Network{
+	n := &Network{
+		announcer:  newCDJAnnouncer(),
 		remoteDB:   newRemoteDB(),
-		cdjMonitor: newCDJStatusMonitor(),
 		devManager: newDeviceManager(),
+		cdjMonitor: newCDJStatusMonitor(),
 	}
 
-	network.remoteDB.activate(network.devManager, vCDJ.ID)
-	network.cdjMonitor.activate(listenerConn)
-	network.devManager.activate(announceConn)
+	activeNetwork = n
 
-	activeNetwork = network
+	n.openUDPConnections()
 
-	return network, nil
+	// We can start the device manager and CDJ monitor immediately as neither
+	// of these have any type of reconfiguration options other than then
+	// network connection. (unlike the remote DB and announcer)
+	n.devManager.activate(n.announceConn)
+	n.cdjMonitor.activate(n.listenerConn)
+	n.remoteDB.activate(n.devManager)
+
+	return n, nil
 }

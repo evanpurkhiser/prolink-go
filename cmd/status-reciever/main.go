@@ -15,7 +15,13 @@ func main() {
 		panic(err)
 	}
 
-	network.AutoConfigure(3 * time.Second)
+	if err := network.AutoConfigure(3 * time.Second); err != nil {
+		fmt.Println("Unable to autoconfigure: %s", err)
+	} else {
+		fmt.Println("-> Autoconfigured with values:")
+		fmt.Printf("   Interface: %s\n", network.TargetInterface.Name)
+		fmt.Printf("   Virtual CDJ ID: %d\n", network.VirtualCDJID)
+	}
 
 	dm := network.DeviceManager()
 	dj := network.CDJStatusMonitor()

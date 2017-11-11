@@ -229,8 +229,9 @@ type TrackQuery struct {
 
 // RemoteDB provides an interface to talking to the remote database.
 type RemoteDB struct {
-	deviceID DeviceID
-	conns    map[DeviceID]*deviceConnection
+	deviceID  DeviceID
+	conns     map[DeviceID]*deviceConnection
+	connsLock *sync.Mutex
 }
 
 // IsLinked reports weather the DB server is available for the given device.
@@ -513,6 +514,10 @@ func (rd *RemoteDB) openConnection(dev *Device) {
 	}
 
 	conn.Open()
+
+	rd.connsLock.Lock()
+	defer rd.connsLock.Unlock()
+
 	rd.conns[dev.ID] = conn
 }
 
@@ -525,6 +530,10 @@ func (rd *RemoteDB) refreshConnection(dev *Device) {
 // closeConnection closes the active connection for the specified device.
 func (rd *RemoteDB) closeConnection(dev *Device) {
 	rd.conns[dev.ID].Close()
+
+	rd.connsLock.Lock()
+	defer rd.connsLock.Unlock()
+
 	delete(rd.conns, dev.ID)
 }
 
@@ -560,6 +569,7 @@ func (rd *RemoteDB) activate(dm *DeviceManager) {
 
 func newRemoteDB() *RemoteDB {
 	return &RemoteDB{
-		conns: map[DeviceID]*deviceConnection{},
+		conns:     map[DeviceID]*deviceConnection{},
+		connsLock: &sync.Mutex{},
 	}
 }

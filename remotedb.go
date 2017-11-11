@@ -104,7 +104,7 @@ type deviceConnection struct {
 	disconnect chan bool
 }
 
-// connect attempts to open a TCP socket connection  to the device. This will
+// connect attempts to open a TCP socket connection to the device. This will
 // send the necessary packet sequence in order start communicating with the
 // database server once connected.
 func (dc *deviceConnection) connect() error {

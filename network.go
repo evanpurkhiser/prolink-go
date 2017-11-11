@@ -101,10 +101,17 @@ func getMatchingInterface(ip net.IP) (*net.Interface, error) {
 	}
 
 	for _, possibleIface := range ifaces {
+		if possibleIface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
 		addrs, err := possibleIface.Addrs()
 		if err != nil {
 			return nil, err
 		}
+
+		var matchedIface *net.Interface
+		matchedSubnetLen := 0x00
 
 		for _, addr := range addrs {
 			ifaceIP, ok := addr.(*net.IPNet)
@@ -112,9 +119,16 @@ func getMatchingInterface(ip net.IP) (*net.Interface, error) {
 				continue
 			}
 
-			if ifaceIP.IP.Mask(ifaceIP.Mask).Equal(ip.Mask(ifaceIP.Mask)) {
-				return &possibleIface, nil
+			subnetLen, _ := ifaceIP.Mask.Size()
+
+			if ifaceIP.Contains(ip) && subnetLen > matchedSubnetLen {
+				matchedIface = &possibleIface
+				matchedSubnetLen = subnetLen
 			}
+		}
+
+		if matchedIface != nil {
+			return matchedIface, nil
 		}
 	}
 

@@ -71,6 +71,28 @@ func (m *DeviceManager) OnDeviceRemoved(fn DeviceListener) {
 	m.delHandlers = append(m.delHandlers, fn)
 }
 
+// RemoveListener removes a DeviceListener that may have been added by
+// OnDeviceAdded or OnDeviceRemoved.
+func (m *DeviceManager) RemoveListener(fn DeviceListener) {
+	k := 0
+	for _, handler := range m.addHandlers {
+		if handler != fn {
+			m.addHandlers[k] = handler
+			k++
+		}
+	}
+	m.addHandlers = m.addHandlers[:k]
+
+	k = 0
+	for _, handler := range m.delHandlers {
+		if handler != fn {
+			m.delHandlers[k] = handler
+			k++
+		}
+	}
+	m.delHandlers = m.delHandlers[:k]
+}
+
 // ActiveDeviceMap returns a mapping of device IDs to their associated devices.
 func (m *DeviceManager) ActiveDeviceMap() map[DeviceID]*Device {
 	return m.devices

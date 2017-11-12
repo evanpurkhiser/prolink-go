@@ -20,6 +20,12 @@ var ErrDeviceNotLinked = fmt.Errorf("The device is not linked on the network")
 // TODO: Figure out what packet sequence is needed to read CD metadata.
 var ErrCDUnsupported = fmt.Errorf("Reading metadata from CDs is currently unsupported")
 
+// allowedDevices specify what device types act as a remote DB server
+var allowedDevices = map[DeviceType]bool{
+	DeviceTypeRB:  true,
+	DeviceTypeCDJ: true,
+}
+
 // rdSeparator is a 6 byte marker used in TCP packets sent sent and received
 // from the remote db server. It's not particular known exactly what this
 // value is for, but in some packets it seems to be used as a field separator.
@@ -505,6 +511,10 @@ func (rd *RemoteDB) sendMessage(devID DeviceID, m []byte) error {
 
 // openConnection initializes a new deviceConnection for the specified device.
 func (rd *RemoteDB) openConnection(dev *Device) {
+	if _, ok := allowedDevices[dev.Type]; !ok {
+		return
+	}
+
 	conn := &deviceConnection{
 		remoteDB:   rd,
 		device:     dev,
@@ -521,20 +531,24 @@ func (rd *RemoteDB) openConnection(dev *Device) {
 	rd.conns[dev.ID] = conn
 }
 
-// refreshConnection attempts to reconnect to the specified device.
-func (rd *RemoteDB) refreshConnection(dev *Device) {
-	rd.closeConnection(dev)
-	rd.openConnection(dev)
-}
-
 // closeConnection closes the active connection for the specified device.
 func (rd *RemoteDB) closeConnection(dev *Device) {
+	if _, ok := rd.conns[dev.ID]; !ok {
+		return
+	}
+
 	rd.conns[dev.ID].Close()
 
 	rd.connsLock.Lock()
 	defer rd.connsLock.Unlock()
 
 	delete(rd.conns, dev.ID)
+}
+
+// refreshConnection attempts to reconnect to the specified device.
+func (rd *RemoteDB) refreshConnection(dev *Device) {
+	rd.closeConnection(dev)
+	rd.openConnection(dev)
 }
 
 // setRequestingDeviceID specifies what device ID the requests to the remote DB
@@ -547,24 +561,24 @@ func (rd *RemoteDB) setRequestingDeviceID(deviceID DeviceID) {
 // remote database queries to be added to the PRO DJ LINK network. This
 // maintains adding and removing of device connections.
 func (rd *RemoteDB) activate(dm *DeviceManager) {
-	allowedDevices := map[DeviceType]bool{
-		DeviceTypeRB:  true,
-		DeviceTypeCDJ: true,
+	// Connect to already active devices on the network
+	for _, dev := range dm.ActiveDeviceMap() {
+		rd.openConnection(dev)
 	}
 
-	// Cleanup devices removed from the network
-	onRemove := rd.closeConnection
+	dm.OnDeviceAdded(DeviceListenerFunc(rd.openConnection))
+	dm.OnDeviceRemoved(DeviceListenerFunc(rd.closeConnection))
+}
 
-	// Connect to the remote database of new devices on the network
-	onConnect := func(dev *Device) {
-		// Not all pro-link devices provide the remote DB service
-		if _, ok := allowedDevices[dev.Type]; ok {
-			rd.openConnection(dev)
-		}
+// deactivate closes any open remote DB connections and stops waiting to
+// connect to new devices that appear on the network.
+func (rd *RemoteDB) deactivate(dm *DeviceManager) {
+	dm.RemoveListener(DeviceListenerFunc(rd.openConnection))
+	dm.RemoveListener(DeviceListenerFunc(rd.closeConnection))
+
+	for _, conn := range rd.conns {
+		rd.closeConnection(conn.device)
 	}
-
-	dm.OnDeviceAdded(DeviceListenerFunc(onConnect))
-	dm.OnDeviceRemoved(DeviceListenerFunc(onRemove))
 }
 
 func newRemoteDB() *RemoteDB {

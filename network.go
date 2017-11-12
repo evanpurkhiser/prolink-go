@@ -371,6 +371,12 @@ func (n *Network) reloadAnnouncer() error {
 	n.announcer.deactivate()
 	n.announcer.activate(vCDJ, n.announceConn)
 
+	// Reload the remote remote DB service since we may now be announcing as a
+	// different device, we need to re-associate ourselves with the devices
+	// serving the remote database.
+	n.remoteDB.deactivate(n.devManager)
+	n.remoteDB.activate(n.devManager)
+
 	return nil
 }
 
@@ -429,10 +435,12 @@ func Connect() (*Network, error) {
 
 	// We can start the device manager and CDJ monitor immediately as neither
 	// of these have any type of reconfiguration options other than then
-	// network connection. (unlike the remote DB and announcer)
+	// network connection.
 	n.devManager.activate(n.announceConn)
 	n.cdjMonitor.activate(n.listenerConn)
-	n.remoteDB.activate(n.devManager)
+
+	// NOTE: We cannot start the remoteDB service until the Virtual CDJ has
+	// been announced on the network.
 
 	return n, nil
 }

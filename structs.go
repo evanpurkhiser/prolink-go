@@ -52,7 +52,7 @@ const (
 // When receiving a msgTypeMenuItem a item type field is included, this list
 // contains the various item types.
 const (
-	itemTypePath      = 0x0
+	itemTypePath      = 0x00
 	itemTypeAlbum     = 0x02
 	itemTypeDisc      = 0x03
 	itemTypeTitle     = 0x04

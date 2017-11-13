@@ -25,6 +25,9 @@ var allowedDevices = map[DeviceType]bool{
 	DeviceTypeCDJ: true,
 }
 
+// date layout for the date added field
+const dateAddedLayout = "2006-01-02"
+
 // rbDBServerQueryPort is the consistent port on which we can query the remote
 // db server for the port to connect to to communicate with it.
 const rbDBServerQueryPort = 12523
@@ -164,17 +167,18 @@ func (dc *deviceConnection) Close() {
 
 // Track contains track information retrieved from the remote database.
 type Track struct {
-	ID      uint32
-	Path    string
-	Title   string
-	Artist  string
-	Album   string
-	Label   string
-	Genre   string
-	Comment string
-	Key     string
-	Length  time.Duration
-	Artwork []byte
+	ID        uint32
+	Path      string
+	Title     string
+	Artist    string
+	Album     string
+	Label     string
+	Genre     string
+	Comment   string
+	Key       string
+	Length    time.Duration
+	DateAdded time.Time
+	Artwork   []byte
 }
 
 // TrackQuery is used to make queries for track metadata.
@@ -281,16 +285,20 @@ func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
 
 	q.artworkID = items[itemTypeTitle].artworkID
 
+	duration := time.Duration(items[itemTypeDuration].num) * time.Second
+	dateAdded, _ := time.Parse(dateAddedLayout, items[itemTypeDateAdded].text1)
+
 	track := &Track{
-		ID:      q.TrackID,
-		Title:   items[itemTypeTitle].text1,
-		Artist:  items[itemTypeArtist].text1,
-		Album:   items[itemTypeAlbum].text1,
-		Comment: items[itemTypeComment].text1,
-		Key:     items[itemTypeKey].text1,
-		Genre:   items[itemTypeGenre].text1,
-		Label:   items[itemTypeLabel].text1,
-		Length:  time.Duration(items[itemTypeDuration].num) * time.Second,
+		ID:        q.TrackID,
+		Title:     items[itemTypeTitle].text1,
+		Artist:    items[itemTypeArtist].text1,
+		Album:     items[itemTypeAlbum].text1,
+		Comment:   items[itemTypeComment].text1,
+		Key:       items[itemTypeKey].text1,
+		Genre:     items[itemTypeGenre].text1,
+		Label:     items[itemTypeLabel].text1,
+		DateAdded: dateAdded,
+		Length:    duration,
 	}
 
 	return track, nil

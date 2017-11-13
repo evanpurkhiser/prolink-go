@@ -293,8 +293,6 @@ func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
 		Length:  time.Duration(items[itemTypeDuration].num) * time.Second,
 	}
 
-	fmt.Printf("%#v\n", track)
-
 	return track, nil
 }
 

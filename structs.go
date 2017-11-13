@@ -78,6 +78,9 @@ const (
 	itemTypeColorPurple = 0x1b
 )
 
+// date layout for the date added field
+const dateAddedLayout = "2006-01-02"
+
 // fieldTypes are the single byte prefixes for each field, specifying the type
 // of data that will follow.
 const (

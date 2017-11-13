@@ -25,9 +25,6 @@ var allowedDevices = map[DeviceType]bool{
 	DeviceTypeCDJ: true,
 }
 
-// date layout for the date added field
-const dateAddedLayout = "2006-01-02"
-
 // rbDBServerQueryPort is the consistent port on which we can query the remote
 // db server for the port to connect to to communicate with it.
 const rbDBServerQueryPort = 12523

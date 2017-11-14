@@ -283,19 +283,17 @@ func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
 	q.artworkID = items[itemTypeTitle].artworkID
 
 	duration := time.Duration(items[itemTypeDuration].num) * time.Second
-	dateAdded, _ := time.Parse(dateAddedLayout, items[itemTypeDateAdded].text1)
 
 	track := &Track{
-		ID:        q.TrackID,
-		Title:     items[itemTypeTitle].text1,
-		Artist:    items[itemTypeArtist].text1,
-		Album:     items[itemTypeAlbum].text1,
-		Comment:   items[itemTypeComment].text1,
-		Key:       items[itemTypeKey].text1,
-		Genre:     items[itemTypeGenre].text1,
-		Label:     items[itemTypeLabel].text1,
-		DateAdded: dateAdded,
-		Length:    duration,
+		ID:      q.TrackID,
+		Title:   items[itemTypeTitle].text1,
+		Artist:  items[itemTypeArtist].text1,
+		Album:   items[itemTypeAlbum].text1,
+		Comment: items[itemTypeComment].text1,
+		Key:     items[itemTypeKey].text1,
+		Genre:   items[itemTypeGenre].text1,
+		Label:   items[itemTypeLabel].text1,
+		Length:  duration,
 	}
 
 	return track, nil

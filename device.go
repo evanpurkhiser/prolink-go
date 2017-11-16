@@ -3,6 +3,7 @@ package prolink
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -127,6 +128,8 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 		}
 	}
 
+	announceLock := sync.Mutex{}
+
 	announceHandler := func() {
 		packet := make([]byte, announcePacketLen)
 
@@ -152,6 +155,9 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 			dev.LastActive = time.Now()
 			return
 		}
+
+		announceLock.Lock()
+		defer announceLock.Unlock()
 
 		// New device
 		m.devices[dev.ID] = dev

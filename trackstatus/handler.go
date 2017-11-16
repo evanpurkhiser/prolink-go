@@ -168,7 +168,6 @@ func (h *Handler) reportNextPlayer() {
 		}
 	}
 
-	// No other tracks are currently playing
 	if earliestPID == 0 {
 		return
 	}
@@ -258,7 +257,7 @@ func (h *Handler) trackMayBeFirst(s *prolink.CDJStatus) {
 }
 
 // playStateChange updates the lastPlayTime of the track on the player who's
-// status is being reported. This will
+// status is being reported.
 func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 	pid := s.PlayerID
 

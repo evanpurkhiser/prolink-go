@@ -501,6 +501,12 @@ func readMessagePacket(conn io.Reader) (*genericPacket, error) {
 		return nil, err
 	}
 
+	// XXX: This is an absolute hack, but for whatever reason when requesting
+	// artwork it will specify that it has 4 arguments, but if there is no
+	// artwork *will only send 3*. in which case we cannot try and read the 4th
+	// argument. Pioneer WHY??
+	artworkHack := uint16(msgTypeField.(fieldNumber02)) == msgTypeArtwork
+
 	argsCount := int(argsCountField.(fieldNumber01))
 	argFields := make([]field, argsCount)
 
@@ -511,6 +517,12 @@ func readMessagePacket(conn io.Reader) (*genericPacket, error) {
 		}
 
 		argFields[i] = argField
+
+		// XXX: See note above. WHY PIONEER??
+		if artworkHack && i == 2 && int32(argField.(fieldNumber04)) == 0 {
+			argFields[3] = fieldBinary{}
+			break
+		}
 	}
 
 	packet := &genericPacket{

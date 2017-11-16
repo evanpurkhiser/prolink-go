@@ -15,6 +15,9 @@ type Event string
 
 // Event constants
 const (
+	SetStarted Event = "set_started"
+	SetEnded   Event = "set_ended"
+
 	NowPlaying Event = "now_playing"
 	Stopped    Event = "stopped"
 	ComingSoon Event = "coming_soon"
@@ -48,6 +51,11 @@ type Config struct {
 	// be playing for (since the beat it was cued at) until the track is
 	// considered to be active.
 	BeatsUntilReported int
+
+	// TimeBetweenSets specifies the duration that no tracks must be on air.
+	// This can be thought of as how long 'air silence' is reasonble in a set
+	// before a separate one has begun.
+	TimeBetweenSets time.Duration
 }
 
 // NewHandler constructs a new Handler to watch for track changes
@@ -74,6 +82,11 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 // - NowPlaying: The track is considered playing and on air to the audiance.
 // - Stopped:    The track was stopped.
 // - ComingSoon: A new track has been loaded.
+//
+// Additionally the following non-track status are reported:
+//
+// - SetStarted: The first track has begun playing.
+// - SetEnded:   The TimeBetweenSets has passed since any tracks were live.
 //
 // See Config for configuration options.
 //
@@ -108,6 +121,9 @@ type Handler struct {
 	lastStartTime   map[prolink.DeviceID]time.Time
 	interruptCancel map[prolink.DeviceID]chan bool
 	wasReportedLive map[prolink.DeviceID]bool
+
+	setInProgress   bool
+	setEndingCancel chan bool
 }
 
 // reportPlayer triggers the track change handler if track on the given device
@@ -123,6 +139,15 @@ func (h *Handler) reportPlayer(pid prolink.DeviceID) {
 	}
 
 	h.wasReportedLive[pid] = true
+
+	if !h.setInProgress {
+		h.setInProgress = true
+		h.handler(SetStarted, h.lastStatus[pid])
+	}
+
+	if h.setEndingCancel != nil {
+		h.setEndingCancel <- true
+	}
 
 	h.handler(NowPlaying, h.lastStatus[pid])
 }
@@ -151,6 +176,36 @@ func (h *Handler) reportNextPlayer() {
 	h.reportPlayer(earliestPID)
 }
 
+// setMayEnd signals that we should wait the specified
+func (h *Handler) setMayEnd() {
+	// set may already be ending. Do not start a new waiter
+	if h.setEndingCancel != nil {
+		return
+	}
+
+	// Ensure all players are stopped
+	for _, s := range h.lastStatus {
+		if playingStates[s.PlayState] {
+			return
+		}
+	}
+
+	h.setEndingCancel = make(chan bool)
+
+	timer := time.NewTimer(h.config.TimeBetweenSets)
+
+	select {
+	case <-h.setEndingCancel:
+		break
+	case <-timer.C:
+		h.handler(SetEnded, &prolink.CDJStatus{})
+		h.setInProgress = false
+		break
+	}
+
+	h.setEndingCancel = nil
+}
+
 // trackMayStop tracks that a track may be stopping. Wait the configured
 // interrupt beat interval and report the next track as live if it has stopped.
 // May be canceld if the track comes back on air.
@@ -173,7 +228,11 @@ func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
 		break
 	case <-timer.C:
 		delete(h.lastStartTime, s.PlayerID)
+		h.handler(Stopped, s)
+		h.wasReportedLive[s.PlayerID] = false
+
 		h.reportNextPlayer()
+		h.setMayEnd()
 		break
 	}
 
@@ -233,6 +292,7 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 
 		h.handler(Stopped, s)
 		h.wasReportedLive[s.PlayerID] = false
+		h.setMayEnd()
 
 		return
 	}

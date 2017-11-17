@@ -296,7 +296,7 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 		return
 	}
 
-	if wasPlaying && !nowPlaying {
+	if wasPlaying && !nowPlaying && h.wasReportedLive[pid] {
 		go h.trackMayStop(s)
 	}
 }

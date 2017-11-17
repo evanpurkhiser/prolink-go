@@ -2,7 +2,6 @@ package prolink
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"strconv"
@@ -136,8 +135,6 @@ func (s *CDJStatus) String() string {
 }
 
 func packetToStatus(p []byte) (*CDJStatus, error) {
-	b := binary.BigEndian
-
 	if !bytes.HasPrefix(p, prolinkHeader) {
 		return nil, fmt.Errorf("CDJ status packet does not start with the expected header")
 	}
@@ -148,7 +145,7 @@ func packetToStatus(p []byte) (*CDJStatus, error) {
 
 	status := &CDJStatus{
 		PlayerID:       DeviceID(p[0x21]),
-		TrackID:        b.Uint32(p[0x2C : 0x2C+4]),
+		TrackID:        be.Uint32(p[0x2C : 0x2C+4]),
 		TrackDevice:    DeviceID(p[0x28]),
 		TrackSlot:      TrackSlot(p[0x29]),
 		PlayState:      PlayState(p[0x7B]),
@@ -159,9 +156,9 @@ func packetToStatus(p []byte) (*CDJStatus, error) {
 		SliderPitch:    calcPitch(p[0x8D : 0x8D+3]),
 		EffectivePitch: calcPitch(p[0x99 : 0x99+3]),
 		BeatInMeasure:  uint8(p[0xA6]),
-		BeatsUntilCue:  b.Uint16(p[0xA4 : 0xA4+2]),
-		Beat:           b.Uint32(p[0xA0 : 0xA0+4]),
-		PacketNum:      b.Uint32(p[0xC8 : 0xC8+4]),
+		BeatsUntilCue:  be.Uint16(p[0xA4 : 0xA4+2]),
+		Beat:           be.Uint32(p[0xA0 : 0xA0+4]),
+		PacketNum:      be.Uint32(p[0xC8 : 0xC8+4]),
 	}
 
 	return status, nil
@@ -174,7 +171,7 @@ func packetToStatus(p []byte) (*CDJStatus, error) {
 func calcPitch(p []byte) float32 {
 	p = append([]byte{0x00}, p[:]...)
 
-	v := float32(binary.BigEndian.Uint32(p))
+	v := float32(be.Uint32(p))
 	d := float32(0x100000)
 
 	return (v - d) / d * 100
@@ -182,7 +179,7 @@ func calcPitch(p []byte) float32 {
 
 // calcBPM converts a uint16 byte value into a float32 bpm.
 func calcBPM(p []byte) float32 {
-	return float32(binary.BigEndian.Uint16(p)) / 100
+	return float32(be.Uint16(p)) / 100
 }
 
 // A StatusHandler responds to status updates on a CDJ.

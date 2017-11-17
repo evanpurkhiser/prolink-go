@@ -2,10 +2,13 @@ package prolink
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"time"
 )
+
+var be = binary.BigEndian
 
 // We wait a second and a half to send keep alive packets for the virtual CDJ
 // we create on the PRO DJ LINK network.

@@ -1,14 +1,11 @@
 package prolink
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"unicode/utf16"
 )
-
-var be = binary.BigEndian
 
 // Implements structs needed to create and parse packets passed over the TCP
 // portion of the Pioneer PRO DJ LINK network.

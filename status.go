@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 )
 
@@ -179,7 +180,13 @@ func calcPitch(p []byte) float32 {
 
 // calcBPM converts a uint16 byte value into a float32 bpm.
 func calcBPM(p []byte) float32 {
-	return float32(be.Uint16(p)) / 100
+	val := be.Uint16(p)
+
+	if val == math.MaxUint16 {
+		return 0
+	}
+
+	return float32(val) / 100
 }
 
 // A StatusHandler responds to status updates on a CDJ.

@@ -282,17 +282,17 @@ func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
 
 	q.artworkID = items[itemTypeTitle].artworkID
 
-	duration := time.Duration(items[itemTypeDuration].num) * time.Second
+	duration := time.Duration(items.getNum(itemTypeDuration)) * time.Second
 
 	track := &Track{
 		ID:      q.TrackID,
-		Title:   items[itemTypeTitle].text1,
-		Artist:  items[itemTypeArtist].text1,
-		Album:   items[itemTypeAlbum].text1,
-		Comment: items[itemTypeComment].text1,
-		Key:     items[itemTypeKey].text1,
-		Genre:   items[itemTypeGenre].text1,
-		Label:   items[itemTypeLabel].text1,
+		Title:   items.getText(itemTypeTitle),
+		Artist:  items.getText(itemTypeArtist),
+		Album:   items.getText(itemTypeAlbum),
+		Comment: items.getText(itemTypeComment),
+		Key:     items.getText(itemTypeKey),
+		Genre:   items.getText(itemTypeGenre),
+		Label:   items.getText(itemTypeLabel),
 		Length:  duration,
 	}
 
@@ -323,12 +323,12 @@ func (rd *RemoteDB) queryTrackPath(q *TrackQuery) (string, error) {
 		return "", err
 	}
 
-	return items[itemTypePath].text1, nil
+	return items.getText(itemTypePath), nil
 }
 
 // getMenuItems is used to query a list of menu items. It returns a mapping of
 // the menu itemType byte to the menu item packet object.
-func (rd *RemoteDB) getMenuItems(devID DeviceID, p1, p2 messagePacket) (map[byte]*menuItem, error) {
+func (rd *RemoteDB) getMenuItems(devID DeviceID, p1, p2 messagePacket) (menuItems, error) {
 	if err := rd.sendMessage(devID, p1); err != nil {
 		return nil, err
 	}
@@ -365,7 +365,7 @@ func (rd *RemoteDB) getMenuItems(devID DeviceID, p1, p2 messagePacket) (map[byte
 		items[item.itemType] = item
 	}
 
-	return items, nil
+	return menuItems(items), nil
 }
 
 // getArtwork requests artwork of a specific ID from the remote database.

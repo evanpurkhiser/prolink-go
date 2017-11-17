@@ -450,6 +450,26 @@ func makeMenuItem(p *genericPacket) *menuItem {
 	}
 }
 
+// menuItem is a convinience struct that adds some safe getter methods for
+// retriving menu item values.
+type menuItems map[byte]*menuItem
+
+func (m menuItems) getText(itemType byte) string {
+	if str := m[itemType]; str != nil {
+		return str.text1
+	}
+
+	return ""
+}
+
+func (m menuItems) getNum(itemType byte) int {
+	if str := m[itemType]; str != nil {
+		return int(str.num)
+	}
+
+	return 0
+}
+
 // makeRequestField constructs an fieldNumber4 with the device ID, slot, and
 // render target field. This is used in various messages.
 func makeRequestField(devID DeviceID, slot TrackSlot, renderTo byte) field {

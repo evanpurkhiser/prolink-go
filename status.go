@@ -61,7 +61,7 @@ const (
 
 // Labels associated to the track load slot flags
 var trackSlotLabels = map[TrackSlot]string{
-	TrackSlotEmpty: "empy",
+	TrackSlotEmpty: "empty",
 	TrackSlotCD:    "cd",
 	TrackSlotSD:    "sd",
 	TrackSlotUSB:   "usb",

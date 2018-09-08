@@ -96,7 +96,9 @@ func deviceFromAnnouncePacket(packet []byte) (*Device, error) {
 }
 
 // getMatchingInterface determines the interface that routes the given address
-// by comparing the masked addresses.
+// by comparing the masked addresses. This type of information is generally
+// determined through the kernels routing table, but for sake of cross-platform
+// compatibility, we do some rudimentary lookup.
 func getMatchingInterface(ip net.IP) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -138,10 +140,31 @@ func getMatchingInterface(ip net.IP) (*net.Interface, error) {
 	return nil, fmt.Errorf("Failed to find matching interface for %s", ip)
 }
 
+// getV4IPNetOfInterface finds the first Ipv4 address on an interface that is
+// not a loopback address.
+func getV4IPNetOfInterface(iface *net.Interface) (*net.IPNet, error) {
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, addr := range addrs {
+		ipNet, ok := addr.(*net.IPNet)
+		if ok && ipNet.IP.To4() != nil && !ipNet.IP.IsLoopback() {
+			return ipNet, nil
+		}
+	}
+
+	return nil, nil
+}
+
 // getBroadcastAddress determines the broadcast address to use for
 // communicating with the device.
 func getBroadcastAddress(dev *Device) *net.UDPAddr {
-	mask := dev.IP.DefaultMask()
+	iface, _ := getMatchingInterface(dev.IP)
+	ipNet, _ := getV4IPNetOfInterface(iface)
+
+	mask := ipNet.Mask
 	bcastIPAddr := make(net.IP, net.IPv4len)
 
 	for i, b := range dev.IP.To4() {
@@ -159,20 +182,12 @@ func getBroadcastAddress(dev *Device) *net.UDPAddr {
 // newVirtualCDJDevice constructs a Device that can be bound to the network
 // interface provided.
 func newVirtualCDJDevice(iface *net.Interface, id DeviceID) (*Device, error) {
-	addrs, err := iface.Addrs()
+	ipNet, err := getV4IPNetOfInterface(iface)
 	if err != nil {
 		return nil, err
 	}
 
-	var ipAddress *net.IP
-	for _, addr := range addrs {
-		ipNet, ok := addr.(*net.IPNet)
-		if ok && ipNet.IP.To4() != nil && !ipNet.IP.IsLoopback() {
-			ipAddress = &ipNet.IP
-			break
-		}
-	}
-	if ipAddress == nil {
+	if ipNet == nil {
 		return nil, fmt.Errorf("No IPv4 broadcast interface available")
 	}
 
@@ -181,7 +196,7 @@ func newVirtualCDJDevice(iface *net.Interface, id DeviceID) (*Device, error) {
 		ID:      id,
 		Type:    DeviceTypeCDJ,
 		MacAddr: iface.HardwareAddr,
-		IP:      *ipAddress,
+		IP:      ipNet.IP,
 	}
 
 	return virtualCDJ, nil

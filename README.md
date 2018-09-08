@@ -69,9 +69,6 @@ st.OnStatusUpdate(prolink.StatusHandlerFunc(statusChange));
    Rekordbox takes exclusive access to the socket used to communicate to the
    CDJs making it impossible to receive track status information
 
- * [[GH-4](https://github.com/EvanPurkhiser/prolink-go/issues/4)] CD metadata
-   cannot currently be read.
-
  * [[GH-6](https://github.com/EvanPurkhiser/prolink-go/issues/6)] To read track
    metadata from the CDJs USB drives you may have no more than 3 CDJs. Having 4
    CDJs on the network will only allow you to read track metadata through

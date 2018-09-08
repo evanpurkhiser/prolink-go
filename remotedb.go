@@ -15,10 +15,6 @@ import (
 // not currently 'linked' on the network.
 var ErrDeviceNotLinked = fmt.Errorf("The device is not linked on the network")
 
-// ErrCDUnsupported is returned when attempting to read metadata from a CD slot.
-// TODO: Figure out what packet sequence is needed to read CD metadata.
-var ErrCDUnsupported = fmt.Errorf("Reading metadata from CDs is currently unsupported")
-
 // allowedDevices specify what device types act as a remote DB server
 var allowedDevices = map[DeviceType]bool{
 	DeviceTypeRB:  true,
@@ -210,6 +206,7 @@ func (t Track) String() string {
 type TrackQuery struct {
 	TrackID  uint32
 	Slot     TrackSlot
+	Type     TrackType
 	DeviceID DeviceID
 
 	// artworkID will be filled in after the track metadata is queried, this
@@ -235,10 +232,6 @@ func (rd *RemoteDB) IsLinked(devID DeviceID) bool {
 func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
 	if !rd.IsLinked(q.DeviceID) {
 		return nil, ErrDeviceNotLinked
-	}
-
-	if q.Slot == TrackSlotCD {
-		return nil, ErrCDUnsupported
 	}
 
 	track, err := rd.executeQuery(q)
@@ -291,16 +284,18 @@ func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
 	binary.BigEndian.PutUint32(trackID, q.TrackID)
 
 	getMetadata := &metadataRequestPacket{
-		deviceID: rd.deviceID,
-		slot:     q.Slot,
-		trackID:  q.TrackID,
+		deviceID:  rd.deviceID,
+		slot:      q.Slot,
+		trackType: q.Type,
+		trackID:   q.TrackID,
 	}
 
 	renderData := &renderRequestPacket{
-		deviceID: rd.deviceID,
-		slot:     q.Slot,
-		offset:   0,
-		limit:    32,
+		deviceID:  rd.deviceID,
+		slot:      q.Slot,
+		trackType: q.Type,
+		offset:    0,
+		limit:     32,
 	}
 
 	items, err := rd.getMenuItems(q.DeviceID, getMetadata, renderData)
@@ -333,15 +328,17 @@ func (rd *RemoteDB) queryTrackPath(q *TrackQuery) (string, error) {
 	binary.BigEndian.PutUint32(trackID, q.TrackID)
 
 	trackInfoRequest := &trackInfoRequestPacket{
-		deviceID: rd.deviceID,
-		slot:     q.Slot,
-		trackID:  q.TrackID,
+		deviceID:  rd.deviceID,
+		slot:      q.Slot,
+		trackType: q.Type,
+		trackID:   q.TrackID,
 	}
 
 	renderRequest := &renderRequestPacket{
 		renderType: renderSystem,
 		deviceID:   rd.deviceID,
 		slot:       q.Slot,
+		trackType:  q.Type,
 		offset:     0,
 		limit:      32,
 	}
@@ -401,6 +398,7 @@ func (rd *RemoteDB) getArtwork(q *TrackQuery) ([]byte, error) {
 	artworkRequest := &requestArtwork{
 		deviceID:  rd.deviceID,
 		slot:      q.Slot,
+		trackType: q.Type,
 		artworkID: q.artworkID,
 	}
 

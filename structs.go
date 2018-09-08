@@ -19,11 +19,11 @@ import (
 // identifiers are used for requests, others represent response messages.
 const (
 	// request messages
-	msgTypeIntroduce     uint16 = 0x0000
-	msgTypeGetMetadata   uint16 = 0x2002
-	msgTypeGetArtwork    uint16 = 0x2003
-	msgTypeGetTrackInfo  uint16 = 0x2102
-	msgTypeGetCDMetadata uint16 = 0x2202
+	msgTypeIntroduce          uint16 = 0x0000
+	msgTypeGetMetadata        uint16 = 0x2002
+	msgTypeGetArtwork         uint16 = 0x2003
+	msgTypeGetTrackInfo       uint16 = 0x2102
+	msgTypeGetGenericMetadata uint16 = 0x2202
 
 	// render menu requests
 	msgTypeRenderRequest uint16 = 0x3000
@@ -286,21 +286,21 @@ func (p *introducePacket) String() string {
 // metadata.
 type metadataRequestPacket struct {
 	transactionPacket
-	deviceID DeviceID
-	slot     TrackSlot
-	trackID  uint32
+	deviceID  DeviceID
+	slot      TrackSlot
+	trackType TrackType
+	trackID   uint32
 }
 
 func (p *metadataRequestPacket) bytes() []byte {
 	messageType := msgTypeGetMetadata
 
-	// CD Metadata requests have their own message type
-	if p.slot == TrackSlotCD {
-		messageType = msgTypeGetCDMetadata
+	if p.trackType != TrackTypeRB {
+		messageType = msgTypeGetGenericMetadata
 	}
 
 	args := []field{
-		makeRequestField(p.deviceID, p.slot, renderMainMenu),
+		makeRequestField(p.deviceID, p.slot, p.trackType, renderMainMenu),
 		fieldNumber04(p.trackID),
 	}
 
@@ -323,14 +323,15 @@ func (p *metadataRequestPacket) String() string {
 // 'system info' such as the path.
 type trackInfoRequestPacket struct {
 	transactionPacket
-	deviceID DeviceID
-	slot     TrackSlot
-	trackID  uint32
+	deviceID  DeviceID
+	slot      TrackSlot
+	trackType TrackType
+	trackID   uint32
 }
 
 func (p *trackInfoRequestPacket) bytes() []byte {
 	args := []field{
-		makeRequestField(p.deviceID, p.slot, renderSystem),
+		makeRequestField(p.deviceID, p.slot, p.trackType, renderSystem),
 		fieldNumber04(p.trackID),
 	}
 
@@ -354,6 +355,7 @@ type renderRequestPacket struct {
 	transactionPacket
 	deviceID   DeviceID
 	slot       TrackSlot
+	trackType  TrackType
 	offset     uint32
 	limit      uint32
 	renderType byte
@@ -368,7 +370,7 @@ func (p *renderRequestPacket) bytes() []byte {
 	}
 
 	args := []field{
-		makeRequestField(p.deviceID, p.slot, renderType),
+		makeRequestField(p.deviceID, p.slot, p.trackType, renderType),
 		fieldNumber04(p.offset),
 		fieldNumber04(p.limit),
 		fieldNumber04(0),       // (?) Unknown what this field is for
@@ -396,12 +398,13 @@ type requestArtwork struct {
 	transactionPacket
 	deviceID  DeviceID
 	slot      TrackSlot
+	trackType TrackType
 	artworkID uint32
 }
 
 func (p *requestArtwork) bytes() []byte {
 	args := []field{
-		makeRequestField(p.deviceID, p.slot, renderSystem),
+		makeRequestField(p.deviceID, p.slot, p.trackType, renderSystem),
 		fieldNumber04(p.artworkID),
 	}
 
@@ -469,13 +472,9 @@ func (m menuItems) getNum(itemType byte) int {
 
 // makeRequestField constructs an fieldNumber4 with the device ID, slot, and
 // render target field. This is used in various messages.
-func makeRequestField(devID DeviceID, slot TrackSlot, renderTo byte) field {
+func makeRequestField(devID DeviceID, slot TrackSlot, ttype TrackType, renderTo byte) field {
 	value := []byte{
-		byte(devID), renderTo, byte(slot),
-
-		// This last byte still has unknown meaning here. In the libpdjl
-		// project it's described as 'source analyzed' but it's unclear.
-		0x01,
+		byte(devID), renderTo, byte(slot), byte(ttype),
 	}
 
 	// Although this is more of a packet byte field, it's represented as a uint32

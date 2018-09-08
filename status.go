@@ -71,6 +71,25 @@ var trackSlotLabels = map[TrackSlot]string{
 // TrackSlot represents the slot that a track is loaded from on the CDJ.
 type TrackSlot byte
 
+// Track type flags
+const (
+	TrackTypeNone       TrackType = 0x00
+	TrackTypeRB         TrackType = 0x01
+	TrackTypeUnanalyzed TrackType = 0x02
+	TrackTypeAudioCD    TrackType = 0x05
+)
+
+// Labels associated to the track type flags
+var trackTypeLabels = map[TrackType]string{
+	TrackTypeNone:       "none",
+	TrackTypeRB:         "rekordbox",
+	TrackTypeUnanalyzed: "unanalyzed",
+	TrackTypeAudioCD:    "audio_cd",
+}
+
+// TrackType represents the type of track.
+type TrackType byte
+
 // String returns the string representation of the track slot.
 func (s TrackSlot) String() string {
 	return trackSlotLabels[s]
@@ -82,6 +101,7 @@ type CDJStatus struct {
 	TrackID        uint32
 	TrackDevice    DeviceID
 	TrackSlot      TrackSlot
+	TrackType      TrackType
 	PlayState      PlayState
 	IsOnAir        bool
 	IsSync         bool
@@ -105,13 +125,14 @@ func (s *CDJStatus) TrackQuery() *TrackQuery {
 	return &TrackQuery{
 		DeviceID: s.TrackDevice,
 		Slot:     s.TrackSlot,
+		Type:     s.TrackType,
 		TrackID:  s.TrackID,
 	}
 }
 
 func (s *CDJStatus) String() string {
 	statusText := `Status of Device %d (packet %d)
-  Track  %-9s [from device %d, slot %s]
+  Track  %-9s [from device %d, slot %s, type %s]
   BPM    %-9s [pitch %2.2f%%, effective pitch %2.2f%%]
   Beat   %-9s [%d/4, %d beats to cue]
   Status %-9s [synced: %t, onair: %t, master: %t]`
@@ -122,6 +143,7 @@ func (s *CDJStatus) String() string {
 		strconv.Itoa(int(s.TrackID)),
 		s.TrackDevice,
 		trackSlotLabels[s.TrackSlot],
+		trackTypeLabels[s.TrackType],
 		fmt.Sprintf("%2.2f", s.TrackBPM),
 		s.SliderPitch,
 		s.EffectivePitch,
@@ -149,6 +171,7 @@ func packetToStatus(p []byte) (*CDJStatus, error) {
 		TrackID:        be.Uint32(p[0x2C : 0x2C+4]),
 		TrackDevice:    DeviceID(p[0x28]),
 		TrackSlot:      TrackSlot(p[0x29]),
+		TrackType:      TrackType(p[0x2a]),
 		PlayState:      PlayState(p[0x7B]),
 		IsOnAir:        p[0x89]&statusFlagOnAir != 0,
 		IsSync:         p[0x89]&statusFlagSync != 0,

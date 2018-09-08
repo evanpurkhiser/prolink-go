@@ -178,6 +178,34 @@ type Track struct {
 	Artwork   []byte
 }
 
+func (t Track) String() string {
+	format := `Track %d
+  Title:   %s
+  Artist:  %s
+  Album:   %s
+  Label:   %s
+  Genre:   %s
+  Comment: %s
+  Key:     %s
+  Length:  %s
+  Added:   %s
+  HasArt:  %t`
+
+	return fmt.Sprintf(format,
+		t.ID,
+		t.Title,
+		t.Artist,
+		t.Album,
+		t.Label,
+		t.Genre,
+		t.Comment,
+		t.Key,
+		t.Length,
+		t.DateAdded,
+		len(t.Artwork) > 0,
+	)
+}
+
 // TrackQuery is used to make queries for track metadata.
 type TrackQuery struct {
 	TrackID  uint32

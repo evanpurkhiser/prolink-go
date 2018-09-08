@@ -26,6 +26,7 @@ const (
 	PlayStateCued      PlayState = 0x06
 	PlayStateCuing     PlayState = 0x07
 	PlayStateSearching PlayState = 0x09
+	PlayStateSpunDown  PlayState = 0x0e
 	PlayStateEnded     PlayState = 0x11
 )
 
@@ -39,6 +40,7 @@ var playStateLabels = map[PlayState]string{
 	PlayStateCued:      "cued",
 	PlayStateCuing:     "cuing",
 	PlayStateSearching: "searching",
+	PlayStateSpunDown:  "spun_down",
 	PlayStateEnded:     "ended",
 }
 

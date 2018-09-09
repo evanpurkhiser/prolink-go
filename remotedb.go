@@ -265,11 +265,17 @@ func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
 }
 
 func (rd *RemoteDB) executeQuery(q *TrackQuery) (*Track, error) {
-	// Synchroize queries as not to distruct the query flow. We could probably
+	// Synchroize queries as not to distrupt the query flow. We could probably
 	// be a little more precice about where the locks are, but for now the
-	// entire query is pretty fast, just lock the whole thing.
-	rd.conns[q.DeviceID].lock.Lock()
-	defer rd.conns[q.DeviceID].lock.Unlock()
+	// entire query is "pretty fast", just lock the whole thing.
+	lock := rd.conns[q.DeviceID].lock
+
+	lock.Lock()
+	defer lock.Unlock()
+
+	if _, ok := rd.conns[q.DeviceID]; !ok {
+		return nil, fmt.Errorf("Device disconnected during query")
+	}
 
 	track, err := rd.queryTrackMetadata(q)
 	if err != nil {

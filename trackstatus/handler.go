@@ -175,8 +175,13 @@ func (h *Handler) reportNextPlayer() {
 	h.reportPlayer(earliestPID)
 }
 
-// setMayEnd signals that we should wait the specified
+// setMayEnd signals that we should wait the specified timeout period for no
+// tracks to become onair and playing to mark a set as having "ended".
 func (h *Handler) setMayEnd() {
+	if !h.setInProgress {
+		return
+	}
+
 	// set may already be ending. Do not start a new waiter
 	if h.setEndingCancel != nil {
 		return

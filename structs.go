@@ -28,6 +28,7 @@ const (
 	// render menu requests
 	msgTypeRenderRequest uint16 = 0x3000
 	msgTypeResponse      uint16 = 0x4000
+	msgTypeError         uint16 = 0x4003
 
 	// response message types
 	msgTypeArtwork    uint16 = 0x4002

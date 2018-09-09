@@ -6,9 +6,22 @@ import (
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/inconshreveable/log15"
 )
 
 var be = binary.BigEndian
+
+// Logger specifies the logger that should be used for capturing information.
+// May be disabled by replacing with the logrus.test.NullLogger.
+var Log = log15.New("module", "prolink")
+
+func init() {
+	Log.SetHandler(log15.LvlFilterHandler(
+		log15.LvlInfo,
+		log15.StdoutHandler,
+	))
+}
 
 // We wait a second and a half to send keep alive packets for the virtual CDJ
 // we create on the PRO DJ LINK network.
@@ -100,6 +113,8 @@ func deviceFromAnnouncePacket(packet []byte) (*Device, error) {
 // determined through the kernels routing table, but for sake of cross-platform
 // compatibility, we do some rudimentary lookup.
 func getMatchingInterface(ip net.IP) (*net.Interface, error) {
+	Log.Debug("Matching IP route interface", "ip", ip)
+
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
@@ -130,6 +145,8 @@ func getMatchingInterface(ip net.IP) (*net.Interface, error) {
 				matchedIface = &possibleIface
 				matchedSubnetLen = subnetLen
 			}
+
+			Log.Debug("Checking iface addr", "iface", possibleIface.Name, "addr", ifaceIP)
 		}
 
 		if matchedIface != nil {
@@ -217,9 +234,13 @@ func (a *cdjAnnouncer) activate(vCDJ *Device, announceConn *net.UDPConn) {
 		return
 	}
 
+	Log.Info("Announcing vCDJ on network", "vCDJ", vCDJ)
+
 	broadcastAddrs := getBroadcastAddress(vCDJ)
 	announcePacket := getAnnouncePacket(vCDJ)
 	announceTicker := time.NewTicker(keepAliveInterval)
+
+	Log.Info("Broadcast address detected", "addr", broadcastAddrs)
 
 	go func() {
 		for {
@@ -240,6 +261,8 @@ func (a *cdjAnnouncer) deactivate() {
 	if a.running == true {
 		a.cancel <- true
 	}
+
+	Log.Info("Announcer stopped")
 }
 
 func newCDJAnnouncer() *cdjAnnouncer {
@@ -298,6 +321,7 @@ func (n *Network) RemoteDB() *RemoteDB {
 func (n *Network) SetVirtualCDJID(id DeviceID) error {
 	n.VirtualCDJID = id
 	n.remoteDB.setRequestingDeviceID(id)
+	Log.Info("VirtualCDJ ID updated", "ID", id)
 
 	return n.reloadAnnouncer()
 }
@@ -306,6 +330,7 @@ func (n *Network) SetVirtualCDJID(id DeviceID) error {
 // announcing the Virtual CDJ.
 func (n *Network) SetInterface(iface *net.Interface) error {
 	n.TargetInterface = iface
+	Log.Info("PROLINK interface updated", "iface", iface.Name)
 
 	return n.reloadAnnouncer()
 }
@@ -323,7 +348,10 @@ func (n *Network) SetInterface(iface *net.Interface) error {
 // wait specifies how long to wait before checking what devices have appeared
 // on the network to determine auto configuration values from.
 func (n *Network) AutoConfigure(wait time.Duration) error {
+	Log.Debug("Waiting to autoconfigure", "wait", wait)
 	time.Sleep(wait)
+
+	Log.Debug("Starting autoconfigure")
 
 	playerIDs := []DeviceID{}
 	var CDJAddr net.IP
@@ -386,6 +414,8 @@ func (n *Network) reloadAnnouncer() error {
 		return fmt.Errorf("Failed to construct virtual CDJ: %s", err)
 	}
 
+	Log.Info("Reloading announcer")
+
 	n.announcer.deactivate()
 	n.announcer.activate(vCDJ, n.announceConn)
 
@@ -407,6 +437,7 @@ func (n *Network) openUDPConnections() error {
 	}
 
 	n.listenerConn = listenerConn
+	Log.Debug("UDP socket open -> packet listening", "addr", listenerAddr)
 
 	announceConn, err := net.ListenUDP("udp", announceAddr)
 	if err != nil {
@@ -414,6 +445,7 @@ func (n *Network) openUDPConnections() error {
 	}
 
 	n.announceConn = announceConn
+	Log.Debug("UDP socket open -> announce listening", "addr", announceAddr)
 
 	return nil
 }
@@ -439,6 +471,8 @@ func Connect() (*Network, error) {
 	if activeNetwork != nil {
 		return activeNetwork, nil
 	}
+
+	Log.Info("Connecting to Prolink network")
 
 	n := &Network{
 		announcer:  newCDJAnnouncer(),

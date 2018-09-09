@@ -238,6 +238,7 @@ func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
 
 	// Refresh the connection if we EOF while querying the server
 	if err != nil && err == io.EOF {
+		Log.Warn("Got EOF while querying server. Reconnecting", "device", q.DeviceID)
 		rd.refreshConnection(rd.conns[q.DeviceID].device)
 	}
 
@@ -419,6 +420,8 @@ func (rd *RemoteDB) getArtwork(q *TrackQuery) ([]byte, error) {
 func (rd *RemoteDB) sendMessage(devID DeviceID, m messagePacket) error {
 	devConn := rd.conns[devID]
 
+	Log.Debug("Sending packet", "packet", m)
+
 	m.setTransactionID(devConn.txCount)
 	if _, err := devConn.conn.Write(m.bytes()); err != nil {
 		return err
@@ -483,6 +486,7 @@ func (rd *RemoteDB) setRequestingDeviceID(deviceID DeviceID) {
 func (rd *RemoteDB) activate(dm *DeviceManager) {
 	// Connect to already active devices on the network
 	for _, dev := range dm.ActiveDeviceMap() {
+		Log.Info("Opening Remote DB connection", "target", dev)
 		rd.openConnection(dev)
 	}
 

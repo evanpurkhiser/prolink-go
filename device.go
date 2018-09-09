@@ -115,6 +115,8 @@ func (m *DeviceManager) ActiveDevices() []*Device {
 func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 	timeouts := map[DeviceID]*time.Timer{}
 
+	Log.Info("Now monitoring for PROLINK devices")
+
 	timeoutTimer := func(dev *Device) {
 		timeouts[dev.ID] = time.NewTimer(deviceTimeout)
 		<-timeouts[dev.ID].C
@@ -122,6 +124,8 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 		// Device timeout expired. No longer active
 		delete(timeouts, dev.ID)
 		delete(m.devices, dev.ID)
+
+		Log.Info("Device timeout", "device", dev)
 
 		for _, h := range m.delHandlers {
 			go h.OnChange(dev)
@@ -161,6 +165,8 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 
 		// New device
 		m.devices[dev.ID] = dev
+
+		Log.Info("New device tracked", "device", dev)
 
 		for _, h := range m.addHandlers {
 			go h.OnChange(dev)

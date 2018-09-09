@@ -437,6 +437,10 @@ func (rd *RemoteDB) getArtwork(q *TrackQuery) ([]byte, error) {
 		return nil, err
 	}
 
+	if resp.messageType != msgTypeArtwork {
+		return nil, fmt.Errorf("Invalid artwork request, got response type %#x", resp.messageType)
+	}
+
 	return []byte(resp.arguments[3].(fieldBinary)), nil
 }
 

@@ -80,7 +80,7 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 // The following track statuses are reported:
 //
 // - NowPlaying: The track is considered playing and on air to the audiance.
-// - Stopped:    The track was stopped.
+// - Stopped:    The track was stopped / paused.
 // - ComingSoon: A new track has been loaded.
 //
 // Additionally the following non-track status are reported:

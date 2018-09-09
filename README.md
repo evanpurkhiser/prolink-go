@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/EvanPurkhiser/prolink-go.svg?branch=master)](https://travis-ci.org/EvanPurkhiser/prolink-go)
 
 This go library provides an API to the Pioneer PRO DJ LINK network. Providing
-various forms of interactions.
+various interactions and event subscribing.
 
 Massive thank you to [@brunchboy](https://github.com/brunchboy) for his work on
 [dysentery](https://github.com/brunchboy/dysentery).

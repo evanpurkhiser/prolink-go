@@ -70,6 +70,7 @@ type deviceConnection struct {
 	lock     *sync.Mutex
 	conn     net.Conn
 	txCount  uint32
+	timeout  time.Duration
 
 	retryEvery time.Duration
 	disconnect chan bool
@@ -86,6 +87,10 @@ func (dc *deviceConnection) connect() error {
 
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
+		return err
+	}
+
+	if err := conn.SetDeadline(time.Now().Add(dc.timeout)); err != nil {
 		return err
 	}
 
@@ -156,6 +161,20 @@ func (dc *deviceConnection) Close() {
 		dc.conn.Close()
 		dc.conn = nil
 	}
+}
+
+// Read implenets the Reader interface and will read from the device. This
+// updates the read deadline of the connection.
+func (dc *deviceConnection) Read(p []byte) (n int, err error) {
+	dc.conn.SetReadDeadline(time.Now().Add(dc.timeout))
+	return dc.conn.Read(p)
+}
+
+// Write implenets the Writer interface and will write to the device. This
+// updates the write deadline of the connection.
+func (dc *deviceConnection) Write(p []byte) (n int, err error) {
+	dc.conn.SetWriteDeadline(time.Now().Add(dc.timeout))
+	return dc.conn.Write(p)
 }
 
 // Track contains track information retrieved from the remote database.
@@ -359,7 +378,7 @@ func (rd *RemoteDB) getMenuItems(devID DeviceID, p1, p2 messagePacket) (menuItem
 		return nil, err
 	}
 
-	resp, err := readMessagePacket(rd.conns[devID].conn)
+	resp, err := readMessagePacket(rd.conns[devID])
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +397,7 @@ func (rd *RemoteDB) getMenuItems(devID DeviceID, p1, p2 messagePacket) (menuItem
 	items := map[byte]*menuItem{}
 
 	for i := 0; i < entryCount; i++ {
-		entry, err := readMessagePacket(rd.conns[devID].conn)
+		entry, err := readMessagePacket(rd.conns[devID])
 		if err != nil {
 			return nil, err
 		}
@@ -407,7 +426,7 @@ func (rd *RemoteDB) getArtwork(q *TrackQuery) ([]byte, error) {
 		return nil, err
 	}
 
-	resp, err := readMessagePacket(rd.conns[q.DeviceID].conn)
+	resp, err := readMessagePacket(rd.conns[q.DeviceID])
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +442,7 @@ func (rd *RemoteDB) sendMessage(devID DeviceID, m messagePacket) error {
 	Log.Debug("Sending packet", "packet", m)
 
 	m.setTransactionID(devConn.txCount)
-	if _, err := devConn.conn.Write(m.bytes()); err != nil {
+	if _, err := devConn.Write(m.bytes()); err != nil {
 		return err
 	}
 
@@ -444,6 +463,7 @@ func (rd *RemoteDB) openConnection(dev *Device) {
 		lock:       &sync.Mutex{},
 		txCount:    1,
 		retryEvery: 5 * time.Second,
+		timeout:    5 * time.Second,
 	}
 
 	conn.Open()

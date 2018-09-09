@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"go.evanpurkhiser.com/prolink"
-	"go.evanpurkhiser.com/prolink/trackstatus"
+	"go.evanpurkhiser.com/prolink/mixstatus"
 )
 
 func main() {
@@ -21,13 +21,13 @@ func main() {
 	dj := network.CDJStatusMonitor()
 	rb := network.RemoteDB()
 
-	config := trackstatus.Config{
+	config := mixstatus.Config{
 		AllowedInterruptBeats: 8,
 		BeatsUntilReported:    128,
 		TimeBetweenSets:       10 * time.Second,
 	}
 
-	handler := trackstatus.NewHandler(config, func(event trackstatus.Event, status *prolink.CDJStatus) {
+	handler := mixstatus.NewHandler(config, func(event mixstatus.Event, status *prolink.CDJStatus) {
 		fmt.Printf("Event: %s\n", event)
 		fmt.Println(status)
 

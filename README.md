@@ -58,8 +58,8 @@ st.OnStatusUpdate(prolink.StatusHandlerFunc(statusChange));
   [`RemoteDB`](https://godoc.org/go.evanpurkhiser.com/prolink#RemoteDB). This
   includes most metadata fields as well as (low quality) album artwork.
 
-- View the track status of an entire equipment setup as a whole using the
-  [`trackstatus.Handler`](https://godoc.org/github.com/EvanPurkhiser/prolink-go/trackstatus#Handler).
+- View the status of a DJ setup as a whole using the
+  [`mixstatus.Handler`](https://godoc.org/github.com/EvanPurkhiser/prolink-go/mixstatus#Handler).
   This allows you to determine the status of tracks in a mixing situation. Has
   the track been playing long enough to be considered 'now playing'?
 

@@ -346,8 +346,19 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 		}
 	}
 
+	// Only report a track as coming soon if at least one other track is
+	// currently playing.
+	shouldReportComingSoon := false
+
+	for _, reportedLive := range h.wasReportedLive {
+		if reportedLive {
+			shouldReportComingSoon = true
+			break
+		}
+	}
+
 	// New track loaded. Reset reported-live flag and report ComingSoon
-	if ls.TrackID != s.TrackID {
+	if ls.TrackID != s.TrackID && shouldReportComingSoon {
 		h.wasReportedLive[pid] = false
 		h.handler(ComingSoon, s)
 	}

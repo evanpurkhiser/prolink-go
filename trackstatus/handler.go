@@ -291,6 +291,10 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 			cancelInterupt <- true
 		}
 
+		if playingStates[h.lastStatus[s.PlayerID].PlayState] {
+			return
+		}
+
 		delete(h.lastStartTime, pid)
 		h.reportNextPlayer()
 
@@ -337,7 +341,7 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 
 	// On-Air state has changed
 	if ls.IsOnAir != s.IsOnAir {
-		if !s.IsOnAir {
+		if !s.IsOnAir && playingStates[s.PlayState] {
 			go h.trackMayStop(s)
 		}
 

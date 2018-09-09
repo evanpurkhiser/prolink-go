@@ -3,7 +3,8 @@ language: go
 before_install:
 - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-script:
-- test
+install:
 - dep ensure
+
+script:
 - go build cmd/status-reciever/main.go

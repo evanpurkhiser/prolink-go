@@ -14,11 +14,22 @@ const (
 	DeviceTypeRB    DeviceType = 0x04
 )
 
+var deviceTypeLabels = map[DeviceType]string{
+	DeviceTypeCDJ:   "cdj",
+	DeviceTypeMixer: "djm",
+	DeviceTypeRB:    "rekordbox",
+}
+
 // VirtualCDJName is the name given to the Virtual CDJ device.
 const VirtualCDJName = "Virtual CDJ"
 
 // DeviceType represents the types of devices on the network.
 type DeviceType byte
+
+// String returns a string representation of a device.
+func (d DeviceType) String() string {
+	return deviceTypeLabels[d]
+}
 
 // DeviceID represents the ID of the device. For CDJs this is the number
 // displayed on screen.

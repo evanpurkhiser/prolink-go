@@ -316,7 +316,7 @@ func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
 		trackID:   q.TrackID,
 	}
 
-	renderData := &renderRequestPacket{
+	renderRequest := &renderRequestPacket{
 		deviceID:  rd.deviceID,
 		slot:      q.Slot,
 		trackType: q.Type,
@@ -324,7 +324,7 @@ func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
 		limit:     32,
 	}
 
-	items, err := rd.getMenuItems(q.DeviceID, getMetadata, renderData)
+	items, err := rd.getMenuItems(q.DeviceID, getMetadata, renderRequest)
 	if err != nil {
 		return nil, err
 	}

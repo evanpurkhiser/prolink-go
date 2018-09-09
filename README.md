@@ -1,14 +1,13 @@
 ## Pioneer PRO DJ LINK client
 
 [![Build Status](https://travis-ci.org/EvanPurkhiser/prolink-go.svg?branch=master)](https://travis-ci.org/EvanPurkhiser/prolink-go)
+[![GoDoc](https://godoc.org/go.evanpurkhiser.com/prolink?status.svg)](https://godoc.org/go.evanpurkhiser.com/prolink)
 
 This go library provides an API to the Pioneer PRO DJ LINK network. Providing
 various interactions and event subscribing.
 
 Massive thank you to [@brunchboy](https://github.com/brunchboy) for his work on
 [dysentery](https://github.com/brunchboy/dysentery).
-
-[![GoDoc](https://godoc.org/go.evanpurkhiser.com/prolink?status.svg)](https://godoc.org/go.evanpurkhiser.com/prolink)
 
 ```go
 import "go.evanpurkhiser.com/prolink"

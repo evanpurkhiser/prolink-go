@@ -467,6 +467,8 @@ func (rd *RemoteDB) openConnection(dev *Device) {
 		return
 	}
 
+	Log.Info("Opening Remote DB connection", "target", dev)
+
 	conn := &deviceConnection{
 		remoteDB:   rd,
 		device:     dev,
@@ -516,7 +518,6 @@ func (rd *RemoteDB) setRequestingDeviceID(deviceID DeviceID) {
 func (rd *RemoteDB) activate(dm *DeviceManager) {
 	// Connect to already active devices on the network
 	for _, dev := range dm.ActiveDeviceMap() {
-		Log.Info("Opening Remote DB connection", "target", dev)
 		rd.openConnection(dev)
 	}
 

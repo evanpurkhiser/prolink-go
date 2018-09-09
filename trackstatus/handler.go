@@ -291,7 +291,7 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 
 		h.handler(Stopped, s)
 		h.wasReportedLive[s.PlayerID] = false
-		h.setMayEnd()
+		go h.setMayEnd()
 
 		return
 	}

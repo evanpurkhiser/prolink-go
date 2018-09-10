@@ -1,4 +1,5 @@
 language: go
+go_import_path: go.evanpurkhiser.com/prolink
 
 before_install:
 - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh

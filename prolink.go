@@ -330,10 +330,19 @@ func (n *Network) SetVirtualCDJID(id DeviceID) error {
 // SetInterface configures what network interface should be used when
 // announcing the Virtual CDJ.
 func (n *Network) SetInterface(iface *net.Interface) error {
+	lastInterface := n.TargetInterface
+
 	n.TargetInterface = iface
 	Log.Info("PROLINK interface updated", "iface", iface.Name)
 
-	return n.reloadAnnouncer()
+	err := n.reloadAnnouncer()
+	if err != nil {
+		Log.Warn("Bad interface, restoring previous interface", "err", err)
+		n.TargetInterface = lastInterface
+		n.reloadAnnouncer()
+	}
+
+	return err
 }
 
 // AutoConfigure attempts to configure the two confgiuration parameters of the

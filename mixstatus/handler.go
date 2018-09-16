@@ -41,6 +41,8 @@ var stoppingStates = map[prolink.PlayState]bool{
 // triggered the change.
 type HandlerFunc func(Event, *prolink.CDJStatus)
 
+func noopHandlerFunc(e Event, s *prolink.CDJStatus) {}
+
 // Config specifies configuration for the Handler.
 type Config struct {
 	// AllowedInterruptBeats configures how many beats a track may not be live
@@ -60,8 +62,12 @@ type Config struct {
 
 // NewHandler constructs a new Handler to watch for track changes
 func NewHandler(config Config, fn HandlerFunc) *Handler {
+	if fn == nil {
+		fn = noopHandlerFunc
+	}
+
 	handler := Handler{
-		config:          config,
+		Config:          config,
 		handler:         fn,
 		lock:            sync.Mutex{},
 		lastStatus:      map[prolink.DeviceID]*prolink.CDJStatus{},
@@ -90,6 +96,9 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 //
 // See Config for configuration options.
 //
+// Config options may be changed after the handler has been constructed and is
+// actively reciving status updates.
+//
 // Track changes are detected based on a number of rules:
 //
 // - The track that has been in the play state with the CDJ in the "on air" state
@@ -113,7 +122,7 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 //
 // - A track will be reported as ComingSoon when a new track is selected.
 type Handler struct {
-	config  Config
+	Config  Config
 	handler HandlerFunc
 
 	lock            sync.Mutex
@@ -196,7 +205,7 @@ func (h *Handler) setMayEnd() {
 
 	h.setEndingCancel = make(chan bool)
 
-	timer := time.NewTimer(h.config.TimeBetweenSets)
+	timer := time.NewTimer(h.Config.TimeBetweenSets)
 
 	select {
 	case <-h.setEndingCancel:
@@ -223,7 +232,7 @@ func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
 
 	// Wait for the AllowedInterruptBeats based off the current BPM
 	beatDuration := bpm.ToDuration(s.TrackBPM, s.SliderPitch)
-	timeout := beatDuration * time.Duration(h.config.AllowedInterruptBeats)
+	timeout := beatDuration * time.Duration(h.Config.AllowedInterruptBeats)
 
 	timer := time.NewTimer(timeout)
 
@@ -370,11 +379,15 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	// If the track on this deck has been playing for more than the configured
 	// BeatsUntilReported (as calculated given the current BPM) report it
 	beatDuration := bpm.ToDuration(s.TrackBPM, s.SliderPitch)
-	timeTillReport := beatDuration * time.Duration(h.config.BeatsUntilReported)
+	timeTillReport := beatDuration * time.Duration(h.Config.BeatsUntilReported)
 
 	lst, ok := h.lastStartTime[pid]
 
 	if ok && lst.Add(timeTillReport).Before(time.Now()) {
 		h.reportPlayer(pid)
 	}
+}
+
+func (h *Handler) SetHandler(fn HandlerFunc) {
+	h.handler = fn
 }

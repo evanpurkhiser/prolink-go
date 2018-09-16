@@ -521,15 +521,19 @@ func (rd *RemoteDB) activate(dm *DeviceManager) {
 		rd.openConnection(dev)
 	}
 
-	dm.OnDeviceAdded(DeviceListenerFunc(rd.openConnection))
-	dm.OnDeviceRemoved(DeviceListenerFunc(rd.closeConnection))
+	key := fmt.Sprintf("remotedb_%d", rd.deviceID)
+
+	dm.OnDeviceAdded(key, DeviceListenerFunc(rd.openConnection))
+	dm.OnDeviceRemoved(key, DeviceListenerFunc(rd.closeConnection))
 }
 
 // deactivate closes any open remote DB connections and stops waiting to
 // connect to new devices that appear on the network.
 func (rd *RemoteDB) deactivate(dm *DeviceManager) {
-	dm.RemoveListener(DeviceListenerFunc(rd.openConnection))
-	dm.RemoveListener(DeviceListenerFunc(rd.closeConnection))
+	key := fmt.Sprintf("remotedb_%d", rd.deviceID)
+
+	dm.RemoveListener(key, DeviceListenerFunc(rd.openConnection))
+	dm.RemoveListener(key, DeviceListenerFunc(rd.closeConnection))
 
 	for _, conn := range rd.conns {
 		rd.closeConnection(conn.device)

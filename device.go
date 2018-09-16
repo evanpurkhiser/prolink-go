@@ -66,43 +66,31 @@ func (f DeviceListenerFunc) OnChange(d *Device) { f(d) }
 // DeviceManager provides functionality for watching the connection status of
 // PRO DJ LINK devices on the network.
 type DeviceManager struct {
-	delHandlers []DeviceListener
-	addHandlers []DeviceListener
+	delHandlers map[string]DeviceListener
+	addHandlers map[string]DeviceListener
 	devices     map[DeviceID]*Device
 }
 
 // OnDeviceAdded registers a listener that will be called when any PRO DJ LINK
-// devices are added to the network.
-func (m *DeviceManager) OnDeviceAdded(fn DeviceListener) {
-	m.addHandlers = append(m.addHandlers, fn)
+// devices are added to the network. Provide a key if you wish to remove the
+// handler later with RemoveListener by specifying the same key.
+func (m *DeviceManager) OnDeviceAdded(key string, fn DeviceListener) {
+	m.addHandlers[key] = fn
 }
 
 // OnDeviceRemoved registers a listener that will be called when any PRO DJ
-// LINK devices are removed from the network.
-func (m *DeviceManager) OnDeviceRemoved(fn DeviceListener) {
-	m.delHandlers = append(m.delHandlers, fn)
+// LINK devices are removed from the network. Provide a key if you wish to
+// remove the handler later with RemoveListener by specifying the same key.
+func (m *DeviceManager) OnDeviceRemoved(key string, fn DeviceListener) {
+	m.delHandlers[key] = fn
 }
 
 // RemoveListener removes a DeviceListener that may have been added by
-// OnDeviceAdded or OnDeviceRemoved.
-func (m *DeviceManager) RemoveListener(fn DeviceListener) {
-	k := 0
-	for _, handler := range m.addHandlers {
-		if handler != fn {
-			m.addHandlers[k] = handler
-			k++
-		}
-	}
-	m.addHandlers = m.addHandlers[:k]
-
-	k = 0
-	for _, handler := range m.delHandlers {
-		if handler != fn {
-			m.delHandlers[k] = handler
-			k++
-		}
-	}
-	m.delHandlers = m.delHandlers[:k]
+// OnDeviceAdded or OnDeviceRemoved. Use the key you provided when adding the
+// handler.
+func (m *DeviceManager) RemoveListener(key string, fn DeviceListener) {
+	delete(m.addHandlers, key)
+	delete(m.delHandlers, key)
 }
 
 // ActiveDeviceMap returns a mapping of device IDs to their associated devices.
@@ -196,8 +184,8 @@ func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 
 func newDeviceManager() *DeviceManager {
 	return &DeviceManager{
-		addHandlers: []DeviceListener{},
-		delHandlers: []DeviceListener{},
+		addHandlers: map[string]DeviceListener{},
+		delHandlers: map[string]DeviceListener{},
 		devices:     map[DeviceID]*Device{},
 	}
 }

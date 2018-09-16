@@ -30,8 +30,8 @@ removed := func(dev *prolink.Device) {
     fmt.Printf("Disconected: %s\n", dev)
 }
 
-dm.OnDeviceAdded(prolink.DeviceListenerFunc(added))
-dm.OnDeviceRemoved(prolink.DeviceListenerFunc(removed))
+dm.OnDeviceAdded("", prolink.DeviceListenerFunc(added))
+dm.OnDeviceRemoved("", prolink.DeviceListenerFunc(removed))
 
 statusChange := func(status *prolink.CDJStatus) {
     // Status packets come every 300ms, or faster depending on what is

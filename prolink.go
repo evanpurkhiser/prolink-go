@@ -246,6 +246,7 @@ func (a *cdjAnnouncer) activate(vCDJ *Device, announceConn *net.UDPConn) {
 		for {
 			select {
 			case <-a.cancel:
+				a.running = false
 				return
 			case <-announceTicker.C:
 				announceConn.WriteToUDP(announcePacket, broadcastAddrs)

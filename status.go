@@ -73,6 +73,11 @@ var trackSlotLabels = map[TrackSlot]string{
 // TrackSlot represents the slot that a track is loaded from on the CDJ.
 type TrackSlot byte
 
+// String returns the string representation of the track slot.
+func (s TrackSlot) String() string {
+	return trackSlotLabels[s]
+}
+
 // Track type flags
 const (
 	TrackTypeNone       TrackType = 0x00
@@ -92,9 +97,9 @@ var trackTypeLabels = map[TrackType]string{
 // TrackType represents the type of track.
 type TrackType byte
 
-// String returns the string representation of the track slot.
-func (s TrackSlot) String() string {
-	return trackSlotLabels[s]
+// String returns the string representation of the track type.
+func (t TrackType) String() string {
+	return trackTypeLabels[t]
 }
 
 // CDJStatus represents various details about the current state of the CDJ.

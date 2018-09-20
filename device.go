@@ -113,10 +113,14 @@ func (m *DeviceManager) ActiveDevices() []*Device {
 // the PRO DJ LINK network.
 func (m *DeviceManager) activate(announceConn *net.UDPConn) {
 	timeouts := map[DeviceID]*time.Timer{}
+	timeoutsLock := sync.Mutex{}
 
 	Log.Info("Now monitoring for PROLINK devices")
 
 	timeoutTimer := func(dev *Device) {
+		timeoutsLock.Lock()
+		defer timeoutsLock.Unlock()
+
 		timeouts[dev.ID] = time.NewTimer(deviceTimeout)
 		<-timeouts[dev.ID].C
 

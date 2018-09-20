@@ -36,10 +36,17 @@ var stoppingStates = map[prolink.PlayState]bool{
 	prolink.PlayStateLoading: true,
 }
 
-// HandlerFunc is a function that will be called when the player track
-// is considered to be changed. This includes the CDJStatus object that
-// triggered the change.
+// Handler is a interface that may be implemented to recieve mix status events
+// This includes the CDJStatus object that triggered the change.
+type Handler interface {
+	OnMixStatus(Event, *prolink.CDJStatus)
+}
+
+// HandlerFunc is an adapter to implement the handler.
 type HandlerFunc func(Event, *prolink.CDJStatus)
+
+// OnMixStatus implements the Handler interface.
+func (f HandlerFunc) OnMixStatus(e Event, s *prolink.CDJStatus) { f(e, s) }
 
 func noopHandlerFunc(e Event, s *prolink.CDJStatus) {}
 
@@ -60,15 +67,15 @@ type Config struct {
 	TimeBetweenSets time.Duration
 }
 
-// NewHandler constructs a new Handler to watch for track changes
-func NewHandler(config Config, fn HandlerFunc) *Handler {
-	if fn == nil {
-		fn = noopHandlerFunc
+// NewProcessor constructs a new Processor to watch for track changes
+func NewProcessor(config Config, handler Handler) *Processor {
+	if handler == nil {
+		handler = HandlerFunc(noopHandlerFunc)
 	}
 
-	handler := Handler{
+	processor := Processor{
 		Config:          config,
-		handler:         fn,
+		handler:         handler.OnMixStatus,
 		lock:            sync.Mutex{},
 		lastStatus:      map[prolink.DeviceID]*prolink.CDJStatus{},
 		lastStartTime:   map[prolink.DeviceID]time.Time{},
@@ -76,12 +83,12 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 		wasReportedLive: map[prolink.DeviceID]bool{},
 	}
 
-	return &handler
+	return &processor
 }
 
-// Handler is a configurable object which implements the prolink.StatusListener
-// interface to more accurately detect when a track has changed in a mixing
-// situation.
+// Processor is a configurable object which implements the
+// prolink.StatusListener interface to more accurately detect when a track has
+// changed in a mixing situation.
 //
 // The following track statuses are reported:
 //
@@ -96,8 +103,8 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 //
 // See Config for configuration options.
 //
-// Config options may be changed after the handler has been constructed and is
-// actively reciving status updates.
+// Config options may be changed after the processor has been constructed and
+// is actively reciving status updates.
 //
 // Track changes are detected based on a number of rules:
 //
@@ -121,7 +128,7 @@ func NewHandler(config Config, fn HandlerFunc) *Handler {
 //   (cued, reached the end of the track, or a new track was loaded.
 //
 // - A track will be reported as ComingSoon when a new track is selected.
-type Handler struct {
+type Processor struct {
 	Config  Config
 	handler HandlerFunc
 
@@ -137,41 +144,41 @@ type Handler struct {
 
 // reportPlayer triggers the track change handler if track on the given device
 // has not already been reported live and is currently on air.
-func (h *Handler) reportPlayer(pid prolink.DeviceID) {
+func (p *Processor) reportPlayer(pid prolink.DeviceID) {
 	// Track has already been reported
-	if h.wasReportedLive[pid] {
+	if p.wasReportedLive[pid] {
 		return
 	}
 
-	if !h.lastStatus[pid].IsOnAir {
+	if !p.lastStatus[pid].IsOnAir {
 		return
 	}
 
-	h.wasReportedLive[pid] = true
+	p.wasReportedLive[pid] = true
 
-	if !h.setInProgress {
-		h.setInProgress = true
-		h.handler(SetStarted, h.lastStatus[pid])
+	if !p.setInProgress {
+		p.setInProgress = true
+		p.handler(SetStarted, p.lastStatus[pid])
 	}
 
-	if h.setEndingCancel != nil {
-		h.setEndingCancel <- true
+	if p.setEndingCancel != nil {
+		p.setEndingCancel <- true
 	}
 
-	h.handler(NowPlaying, h.lastStatus[pid])
+	p.handler(NowPlaying, p.lastStatus[pid])
 }
 
 // reportNextPlayer finds the longest playing track that has not been reported
 // live and reports it as live.
-func (h *Handler) reportNextPlayer() {
+func (p *Processor) reportNextPlayer() {
 	var earliestPID prolink.DeviceID
 	earliestTime := time.Now()
 
 	// Locate the player that's been playing for the longest
-	for pid, lastStartTime := range h.lastStartTime {
+	for pid, lastStartTime := range p.lastStartTime {
 		isEarlier := lastStartTime.Before(earliestTime)
 
-		if isEarlier && !h.wasReportedLive[pid] {
+		if isEarlier && !p.wasReportedLive[pid] {
 			earliestTime = lastStartTime
 			earliestPID = pid
 		}
@@ -181,82 +188,82 @@ func (h *Handler) reportNextPlayer() {
 		return
 	}
 
-	h.reportPlayer(earliestPID)
+	p.reportPlayer(earliestPID)
 }
 
 // setMayEnd signals that we should wait the specified timeout period for no
 // tracks to become onair and playing to mark a set as having "ended".
-func (h *Handler) setMayEnd() {
-	if !h.setInProgress {
+func (p *Processor) setMayEnd() {
+	if !p.setInProgress {
 		return
 	}
 
 	// set may already be ending. Do not start a new waiter
-	if h.setEndingCancel != nil {
+	if p.setEndingCancel != nil {
 		return
 	}
 
 	// Ensure all players are stopped
-	for _, s := range h.lastStatus {
+	for _, s := range p.lastStatus {
 		if playingStates[s.PlayState] {
 			return
 		}
 	}
 
-	h.setEndingCancel = make(chan bool)
+	p.setEndingCancel = make(chan bool)
 
-	timer := time.NewTimer(h.Config.TimeBetweenSets)
+	timer := time.NewTimer(p.Config.TimeBetweenSets)
 
 	select {
-	case <-h.setEndingCancel:
+	case <-p.setEndingCancel:
 		break
 	case <-timer.C:
-		h.handler(SetEnded, &prolink.CDJStatus{})
-		h.setInProgress = false
+		p.handler(SetEnded, &prolink.CDJStatus{})
+		p.setInProgress = false
 		break
 	}
 
-	h.setEndingCancel = nil
+	p.setEndingCancel = nil
 }
 
 // trackMayStop tracks that a track may be stopping. Wait the configured
 // interrupt beat interval and report the next track as live if it has stopped.
 // May be canceld if the track comes back on air.
-func (h *Handler) trackMayStop(s *prolink.CDJStatus) {
+func (p *Processor) trackMayStop(s *prolink.CDJStatus) {
 	// track already may stop. Do not start a new waiter.
-	if _, ok := h.interruptCancel[s.PlayerID]; ok {
+	if _, ok := p.interruptCancel[s.PlayerID]; ok {
 		return
 	}
 
-	h.interruptCancel[s.PlayerID] = make(chan bool)
+	p.interruptCancel[s.PlayerID] = make(chan bool)
 
 	// Wait for the AllowedInterruptBeats based off the current BPM
 	beatDuration := bpm.ToDuration(s.TrackBPM, s.SliderPitch)
-	timeout := beatDuration * time.Duration(h.Config.AllowedInterruptBeats)
+	timeout := beatDuration * time.Duration(p.Config.AllowedInterruptBeats)
 
 	timer := time.NewTimer(timeout)
 
 	select {
-	case <-h.interruptCancel[s.PlayerID]:
+	case <-p.interruptCancel[s.PlayerID]:
 		break
 	case <-timer.C:
-		delete(h.lastStartTime, s.PlayerID)
-		h.handler(Stopped, s)
-		h.wasReportedLive[s.PlayerID] = false
+		delete(p.lastStartTime, s.PlayerID)
+		p.handler(Stopped, s)
+		p.wasReportedLive[s.PlayerID] = false
 
-		h.reportNextPlayer()
-		h.setMayEnd()
+		p.reportNextPlayer()
+		p.setMayEnd()
 		break
 	}
 
-	delete(h.interruptCancel, s.PlayerID)
+	delete(p.interruptCancel, s.PlayerID)
 }
 
 // trackMayBeFirst checks that no other tracks are currently on air and
 // playing, other than the current one who's status is being reported as
 // playing, and will report it as live if this is true.
-func (h *Handler) trackMayBeFirst(s *prolink.CDJStatus) {
-	for _, otherStatus := range h.lastStatus {
+func (p *Processor) trackMayBeFirst(s *prolink.CDJStatus) {
+	for _, otherStatus := range p.lastStatus {
 		if otherStatus.PlayerID == s.PlayerID {
 			continue
 		}
@@ -267,12 +274,12 @@ func (h *Handler) trackMayBeFirst(s *prolink.CDJStatus) {
 		}
 	}
 
-	h.reportPlayer(s.PlayerID)
+	p.reportPlayer(s.PlayerID)
 }
 
 // playStateChange updates the lastPlayTime of the track on the player who's
 // status is being reported.
-func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
+func (p *Processor) playStateChange(lastState, s *prolink.CDJStatus) {
 	pid := s.PlayerID
 
 	nowPlaying := playingStates[s.PlayState]
@@ -281,11 +288,11 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 	// Track has begun playing. Mark the start time or cancel interrupt
 	// timers from when the track was previously stopped.
 	if !wasPlaying && nowPlaying {
-		cancelInterupt := h.interruptCancel[pid]
+		cancelInterupt := p.interruptCancel[pid]
 
 		if cancelInterupt == nil {
-			h.lastStartTime[pid] = time.Now()
-			h.trackMayBeFirst(s)
+			p.lastStartTime[pid] = time.Now()
+			p.trackMayBeFirst(s)
 		} else {
 			cancelInterupt <- true
 		}
@@ -295,45 +302,45 @@ func (h *Handler) playStateChange(lastState, s *prolink.CDJStatus) {
 
 	// Track was stopped. Immediately promote another track to be reported and
 	// report the track as being stopped.
-	if wasPlaying && h.wasReportedLive[pid] && stoppingStates[s.PlayState] {
-		if cancelInterupt, ok := h.interruptCancel[pid]; ok {
+	if wasPlaying && p.wasReportedLive[pid] && stoppingStates[s.PlayState] {
+		if cancelInterupt, ok := p.interruptCancel[pid]; ok {
 			cancelInterupt <- true
 		}
 
-		if playingStates[h.lastStatus[s.PlayerID].PlayState] {
+		if playingStates[p.lastStatus[s.PlayerID].PlayState] {
 			return
 		}
 
-		delete(h.lastStartTime, pid)
-		h.reportNextPlayer()
+		delete(p.lastStartTime, pid)
+		p.reportNextPlayer()
 
-		h.handler(Stopped, s)
-		h.wasReportedLive[s.PlayerID] = false
-		go h.setMayEnd()
+		p.handler(Stopped, s)
+		p.wasReportedLive[s.PlayerID] = false
+		go p.setMayEnd()
 
 		return
 	}
 
-	if wasPlaying && !nowPlaying && h.wasReportedLive[pid] {
-		go h.trackMayStop(s)
+	if wasPlaying && !nowPlaying && p.wasReportedLive[pid] {
+		go p.trackMayStop(s)
 	}
 }
 
 // OnStatusUpdate implements the prolink.StatusHandler interface
-func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
+func (p *Processor) OnStatusUpdate(s *prolink.CDJStatus) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
 
 	pid := s.PlayerID
-	ls, ok := h.lastStatus[pid]
+	ls, ok := p.lastStatus[pid]
 
-	h.lastStatus[pid] = s
+	p.lastStatus[pid] = s
 
 	// If this is the first we've heard from this CDJ and it's on air and
 	// playing immediately report it
 	if !ok && s.IsOnAir && playingStates[s.PlayState] {
-		h.lastStartTime[pid] = time.Now()
-		h.reportPlayer(s.PlayerID)
+		p.lastStartTime[pid] = time.Now()
+		p.reportPlayer(s.PlayerID)
 
 		return
 	}
@@ -345,17 +352,17 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 
 	// Play state has changed
 	if ls.PlayState != s.PlayState {
-		h.playStateChange(ls, s)
+		p.playStateChange(ls, s)
 	}
 
 	// On-Air state has changed
 	if ls.IsOnAir != s.IsOnAir {
 		if !s.IsOnAir && playingStates[s.PlayState] {
-			go h.trackMayStop(s)
+			go p.trackMayStop(s)
 		}
 
-		if s.IsOnAir && h.interruptCancel[pid] != nil {
-			h.interruptCancel[pid] <- true
+		if s.IsOnAir && p.interruptCancel[pid] != nil {
+			p.interruptCancel[pid] <- true
 		}
 	}
 
@@ -363,7 +370,7 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 	// currently playing.
 	shouldReportComingSoon := false
 
-	for _, reportedLive := range h.wasReportedLive {
+	for _, reportedLive := range p.wasReportedLive {
 		if reportedLive {
 			shouldReportComingSoon = true
 			break
@@ -372,22 +379,22 @@ func (h *Handler) OnStatusUpdate(s *prolink.CDJStatus) {
 
 	// New track loaded. Reset reported-live flag and report ComingSoon
 	if ls.TrackID != s.TrackID && shouldReportComingSoon {
-		h.wasReportedLive[pid] = false
-		h.handler(ComingSoon, s)
+		p.wasReportedLive[pid] = false
+		p.handler(ComingSoon, s)
 	}
 
 	// If the track on this deck has been playing for more than the configured
 	// BeatsUntilReported (as calculated given the current BPM) report it
 	beatDuration := bpm.ToDuration(s.TrackBPM, s.SliderPitch)
-	timeTillReport := beatDuration * time.Duration(h.Config.BeatsUntilReported)
+	timeTillReport := beatDuration * time.Duration(p.Config.BeatsUntilReported)
 
-	lst, ok := h.lastStartTime[pid]
+	lst, ok := p.lastStartTime[pid]
 
 	if ok && lst.Add(timeTillReport).Before(time.Now()) {
-		h.reportPlayer(pid)
+		p.reportPlayer(pid)
 	}
 }
 
-func (h *Handler) SetHandler(fn HandlerFunc) {
-	h.handler = fn
+func (p *Processor) SetHandler(handler Handler) {
+	p.handler = handler.OnMixStatus
 }

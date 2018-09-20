@@ -59,7 +59,7 @@ st.AddStatusHandler(prolink.StatusHandlerFunc(statusChange));
   includes most metadata fields as well as (low quality) album artwork.
 
 - View the status of a DJ setup as a whole using the
-  [`mixstatus.Handler`](https://godoc.org/github.com/EvanPurkhiser/prolink-go/mixstatus#Handler).
+  [`mixstatus.Processor`](https://godoc.org/github.com/EvanPurkhiser/prolink-go/mixstatus#Processor).
   This allows you to determine the status of tracks in a mixing situation. Has
   the track been playing long enough to be considered 'now playing'?
 

@@ -27,7 +27,7 @@ func main() {
 		TimeBetweenSets:       10 * time.Second,
 	}
 
-	handler := mixstatus.NewHandler(config, func(event mixstatus.Event, status *prolink.CDJStatus) {
+	handler := func(event mixstatus.Event, status *prolink.CDJStatus) {
 		fmt.Printf("Event: %s\n", event)
 		fmt.Println(status)
 
@@ -40,9 +40,14 @@ func main() {
 		}
 
 		fmt.Println("---")
-	})
+	}
 
-	dj.AddStatusHandler(handler)
+	processor := mixstatus.NewProcessor(
+		config,
+		mixstatus.HandlerFunc(handler),
+	)
+
+	dj.AddStatusHandler(processor)
 
 	<-make(chan bool)
 }

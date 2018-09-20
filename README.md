@@ -38,7 +38,7 @@ statusChange := func(status *prolink.CDJStatus) {
     // happening on the CDJ. Do something with them.
 }
 
-st.OnStatusUpdate(prolink.StatusHandlerFunc(statusChange));
+st.AddStatusHandler(prolink.StatusHandlerFunc(statusChange));
 ```
 
 ### Features

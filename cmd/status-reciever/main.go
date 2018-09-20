@@ -42,7 +42,7 @@ func main() {
 		fmt.Println("---")
 	})
 
-	dj.OnStatusUpdate(handler)
+	dj.AddStatusHandler(handler)
 
 	<-make(chan bool)
 }

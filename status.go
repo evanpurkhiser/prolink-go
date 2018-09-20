@@ -237,9 +237,9 @@ type CDJStatusMonitor struct {
 	handlers []StatusHandler
 }
 
-// OnStatusUpdate registers a StatusHandler to be called when any CDJ on the
+// AddStatusHandler registers a StatusHandler to be called when any CDJ on the
 // PRO DJ LINK network reports its status.
-func (sm *CDJStatusMonitor) OnStatusUpdate(h StatusHandler) {
+func (sm *CDJStatusMonitor) AddStatusHandler(h StatusHandler) {
 	sm.handlers = append(sm.handlers, h)
 }
 

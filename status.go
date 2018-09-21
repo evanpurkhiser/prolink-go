@@ -70,6 +70,15 @@ var trackSlotLabels = map[TrackSlot]string{
 	TrackSlotRB:    "rekordbox",
 }
 
+// TrackSlot label to TrackSlot mapping
+var labelsTrackSlot = map[string]TrackSlot{
+	"empty":     TrackSlotEmpty,
+	"cd":        TrackSlotCD,
+	"sd":        TrackSlotSD,
+	"usb":       TrackSlotUSB,
+	"rekordbox": TrackSlotRB,
+}
+
 // TrackSlot represents the slot that a track is loaded from on the CDJ.
 type TrackSlot byte
 
@@ -92,6 +101,14 @@ var trackTypeLabels = map[TrackType]string{
 	TrackTypeRB:         "rekordbox",
 	TrackTypeUnanalyzed: "unanalyzed",
 	TrackTypeAudioCD:    "audio_cd",
+}
+
+// TrackType label to TrackType mapping
+var labelsTrackType = map[string]TrackType{
+	"none":       TrackTypeNone,
+	"rekordbox":  TrackTypeRB,
+	"unanalyzed": TrackTypeUnanalyzed,
+	"audio_cd":   TrackTypeAudioCD,
 }
 
 // TrackType represents the type of track.

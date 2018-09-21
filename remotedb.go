@@ -233,6 +233,19 @@ type TrackKey struct {
 	artworkID uint32
 }
 
+// NewTrackKey constructs a TrackKey from humany friendly representation of
+// track keys. Slot and Type are strings, device and trackID are ints.
+func NewTrackKey(id int, slot, trackType string, deviceID int) *TrackKey {
+	tk := TrackKey{
+		TrackID:  uint32(id),
+		Slot:     labelsTrackSlot[slot],
+		Type:     labelsTrackType[trackType],
+		DeviceID: DeviceID(deviceID),
+	}
+
+	return &tk
+}
+
 // RemoteDB provides an interface to talking to the remote database.
 type RemoteDB struct {
 	deviceID  DeviceID

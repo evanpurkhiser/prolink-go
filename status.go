@@ -139,14 +139,14 @@ type CDJStatus struct {
 	PacketNum      uint32
 }
 
-// TrackQuery constructs a track query object from the CDJStatus. If no track
+// TrackKey constructs a track query object from the CDJStatus. If no track
 // is currently provided in the CDJStatus nil will be returned.
-func (s *CDJStatus) TrackQuery() *TrackQuery {
+func (s *CDJStatus) TrackKey() *TrackKey {
 	if s.TrackID == 0 {
 		return nil
 	}
 
-	return &TrackQuery{
+	return &TrackKey{
 		DeviceID: s.TrackDevice,
 		Slot:     s.TrackSlot,
 		Type:     s.TrackType,

@@ -32,7 +32,7 @@ func main() {
 		fmt.Println(status)
 
 		if status.TrackID != 0 {
-			track, err := rb.GetTrack(status.TrackQuery())
+			track, err := rb.GetTrack(status.TrackKey())
 			if err != nil {
 				fmt.Println(err)
 			}

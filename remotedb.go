@@ -221,8 +221,8 @@ func (t Track) String() string {
 	)
 }
 
-// TrackQuery is used to make queries for track metadata.
-type TrackQuery struct {
+// TrackKey is used to make queries for track metadata.
+type TrackKey struct {
 	TrackID  uint32
 	Slot     TrackSlot
 	Type     TrackType
@@ -248,7 +248,7 @@ func (rd *RemoteDB) IsLinked(devID DeviceID) bool {
 }
 
 // GetTrack queries the remote db for track details given a track ID.
-func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
+func (rd *RemoteDB) GetTrack(q *TrackKey) (*Track, error) {
 	if !rd.IsLinked(q.DeviceID) {
 		return nil, ErrDeviceNotLinked
 	}
@@ -264,7 +264,7 @@ func (rd *RemoteDB) GetTrack(q *TrackQuery) (*Track, error) {
 	return track, err
 }
 
-func (rd *RemoteDB) executeQuery(q *TrackQuery) (*Track, error) {
+func (rd *RemoteDB) executeQuery(q *TrackKey) (*Track, error) {
 	// Synchroize queries as not to distrupt the query flow. We could probably
 	// be a little more precice about where the locks are, but for now the
 	// entire query is "pretty fast", just lock the whole thing.
@@ -303,9 +303,9 @@ func (rd *RemoteDB) executeQuery(q *TrackQuery) (*Track, error) {
 // track, returing a sparse Track object. The track Path and Artwork must be
 // looked up as separate queries.
 //
-// Note that the Artwork ID is populated into the passed TrackQuery after this
+// Note that the Artwork ID is populated into the passed TrackKey after this
 // call completes.
-func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
+func (rd *RemoteDB) queryTrackMetadata(q *TrackKey) (*Track, error) {
 	trackID := make([]byte, 4)
 	binary.BigEndian.PutUint32(trackID, q.TrackID)
 
@@ -349,7 +349,7 @@ func (rd *RemoteDB) queryTrackMetadata(q *TrackQuery) (*Track, error) {
 }
 
 // queryTrackPath looks up the file path of a track in rekordbox.
-func (rd *RemoteDB) queryTrackPath(q *TrackQuery) (string, error) {
+func (rd *RemoteDB) queryTrackPath(q *TrackKey) (string, error) {
 	trackID := make([]byte, 4)
 	binary.BigEndian.PutUint32(trackID, q.TrackID)
 
@@ -420,7 +420,7 @@ func (rd *RemoteDB) getMenuItems(devID DeviceID, p1, p2 messagePacket) (menuItem
 }
 
 // getArtwork requests artwork of a specific ID from the remote database.
-func (rd *RemoteDB) getArtwork(q *TrackQuery) ([]byte, error) {
+func (rd *RemoteDB) getArtwork(q *TrackKey) ([]byte, error) {
 	artworkRequest := &requestArtwork{
 		deviceID:  rd.deviceID,
 		slot:      q.Slot,

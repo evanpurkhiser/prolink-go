@@ -438,7 +438,7 @@ type menuItem struct {
 func makeMenuItem(p *genericPacket) *menuItem {
 	// Single byte fields (fieldNumber01) don't appear to be supported in
 	// arguments list, so even though the menu item type is a single byte we
-	// still have to extract it as byte
+	// still have to extract it as a fieldNumber04.
 	typeBytes := make([]byte, 4)
 	be.PutUint32(typeBytes, uint32(p.arguments[6].(fieldNumber04)))
 

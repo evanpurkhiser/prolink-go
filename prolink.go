@@ -72,7 +72,7 @@ func getAnnouncePacket(dev *Device) []byte {
 		name,                   // 0x0c: 20 byte device name
 		unknown1,               // 0x20: 04 byte unknown
 		[]byte{byte(dev.ID)},   // 0x24: 01 byte for the player ID
-		[]byte{0x00},           // 0x25: 01 byte unknown
+		[]byte{byte(dev.Type)}, // 0x25: 01 byte for the player type
 		dev.MacAddr[:6],        // 0x26: 06 byte mac address
 		dev.IP.To4(),           // 0x2C: 04 byte IP address
 		unknown2,               // 0x30: 04 byte unknown

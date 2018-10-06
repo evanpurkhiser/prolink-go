@@ -493,7 +493,10 @@ func Connect() (*Network, error) {
 
 	activeNetwork = n
 
-	n.openUDPConnections()
+	err := n.openUDPConnections()
+	if err != nil {
+		return nil, err
+	}
 
 	// We can start the device manager and CDJ monitor immediately as neither
 	// of these have any type of reconfiguration options other than then

@@ -21,7 +21,7 @@ var deviceTypeLabels = map[DeviceType]string{
 }
 
 // VirtualCDJName is the name given to the Virtual CDJ device.
-const VirtualCDJName = "Virtual CDJ"
+const VirtualCDJName = "prolink-go"
 
 // DeviceType represents the types of devices on the network.
 type DeviceType byte

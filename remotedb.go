@@ -195,6 +195,7 @@ type Track struct {
 
 func (t Track) String() string {
 	format := `Track %d
+  Path:    %s
   Title:   %s
   Artist:  %s
   Album:   %s
@@ -208,6 +209,7 @@ func (t Track) String() string {
 
 	return fmt.Sprintf(format,
 		t.ID,
+		t.Path,
 		t.Title,
 		t.Artist,
 		t.Album,

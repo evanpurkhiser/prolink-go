@@ -80,7 +80,6 @@ func getAnnouncePacket(dev *Device) []byte {
 		unknown2,               // 0x30: 04 byte unknown
 		[]byte{byte(dev.Type)}, // 0x34: 01 byte for the player type
 		[]byte{0x00},           // 0x35: 01 byte final padding
-
 	}
 
 	return bytes.Join(parts, nil)
@@ -238,9 +237,9 @@ func (a *cdjAnnouncer) activate(vCDJ *Device, announceConn *net.UDPConn) {
 
 	Log.Info("Announcing vCDJ on network", "vCDJ", vCDJ)
 
+	announceTicker := time.NewTicker(keepAliveInterval)
 	broadcastAddrs := getBroadcastAddress(vCDJ)
 	announcePacket := getAnnouncePacket(vCDJ)
-	announceTicker := time.NewTicker(keepAliveInterval)
 
 	Log.Info("Broadcast address detected", "addr", broadcastAddrs)
 

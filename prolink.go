@@ -57,13 +57,17 @@ var prolinkHeader = []byte{
 // network.
 var prolinkIDRange = []DeviceID{0x01, 0x02, 0x03, 0x04}
 
-// getAnnouncePacket constructs the announce packet that is sent on the PRO DJ
-// LINK network to announce a devices existence.
-func getAnnouncePacket(dev *Device) []byte {
+func makeNameBytes(dev *Device) []byte {
 	// The name is a 20 byte string
 	name := make([]byte, 20)
 	copy(name[:], []byte(dev.Name))
 
+	return name
+}
+
+// getAnnouncePacket constructs the announce packet that is sent on the PRO DJ
+// LINK network to announce a devices existence.
+func getAnnouncePacket(dev *Device) []byte {
 	// unknown padding bytes
 	unknown1 := []byte{0x01, 0x02, 0x00, 0x36}
 	unknown2 := []byte{0x01, 0x00, 0x00, 0x00}
@@ -71,7 +75,7 @@ func getAnnouncePacket(dev *Device) []byte {
 	parts := [][]byte{
 		prolinkHeader,          // 0x00: 10 byte header
 		[]byte{0x06, 0x00},     // 0x0A: 02 byte announce packet type
-		name,                   // 0x0c: 20 byte device name
+		makeNameBytes(dev),     // 0x0c: 20 byte device name
 		unknown1,               // 0x20: 04 byte unknown
 		[]byte{byte(dev.ID)},   // 0x24: 01 byte for the player ID
 		[]byte{byte(dev.Type)}, // 0x25: 01 byte for the player type

@@ -33,6 +33,8 @@ const deviceTimeout = 10 * time.Second
 // Length of device announce packets
 const announcePacketLen = 54
 
+const announceDeadline = 5 * time.Second
+
 // The UDP address on which device announcements are recieved.
 var announceAddr = &net.UDPAddr{
 	IP:   net.IPv4zero,
@@ -249,6 +251,7 @@ func (a *cdjAnnouncer) activate(vCDJ *Device, announceConn *net.UDPConn) {
 				a.running = false
 				return
 			case <-announceTicker.C:
+				announceConn.SetWriteDeadline(time.Now().Add(announceDeadline))
 				announceConn.WriteToUDP(announcePacket, broadcastAddrs)
 			}
 		}

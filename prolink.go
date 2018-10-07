@@ -93,7 +93,7 @@ func getAnnouncePacket(dev *Device) []byte {
 // currently used to report the virtual CDJs status, which *seems* to be
 // required for the CDJ to send metadata about some unanalyzed mp3 files.
 func getStatusPacket(dev *Device) []byte {
-	// NOTE: It seems that byte 0x68 and 0x74 MUST be 1 in order for the CDJ to
+	// NOTE: It seems that byte 0x68 and 0x75 MUST be 1 in order for the CDJ to
 	//       correctly report mp3 metadata (again, only for some files).
 	//       See https://github.com/brunchboy/dysentery/issues/15
 	b := []byte{

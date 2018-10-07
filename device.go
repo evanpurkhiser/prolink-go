@@ -23,6 +23,10 @@ var deviceTypeLabels = map[DeviceType]string{
 // VirtualCDJName is the name given to the Virtual CDJ device.
 const VirtualCDJName = "prolink-go"
 
+// VirtualCDJFirmware is a string indicating the firmware version reported with
+// status packets.
+const VirtualCDJFirmware = "1.43"
+
 // DeviceType represents the types of devices on the network.
 type DeviceType byte
 

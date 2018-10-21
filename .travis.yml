@@ -1,11 +1,11 @@
 language: go
-go_import_path: go.evanpurkhiser.com/prolink
+go: [ 1.11.x ]
 
-before_install:
-- curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+env:
+  - GO111MODULE=on
 
 install:
-- dep ensure
+  - go mod download
 
 script:
-- go build cmd/status-reciever/main.go
+  - go build cmd/status-reciever/main.go

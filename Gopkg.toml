@@ -1,4 +1,0 @@
-
-[[constraint]]
-  name = "github.com/inconshreveable/log15"
-  version = "^2.14.0"

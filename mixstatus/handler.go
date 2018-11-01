@@ -395,6 +395,7 @@ func (p *Processor) OnStatusUpdate(s *prolink.CDJStatus) {
 	}
 }
 
+// SetHandler sets the handler type to be used.
 func (p *Processor) SetHandler(handler Handler) {
 	p.handler = handler.OnMixStatus
 }

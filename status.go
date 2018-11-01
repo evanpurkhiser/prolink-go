@@ -241,7 +241,7 @@ type StatusHandler interface {
 	OnStatusUpdate(*CDJStatus)
 }
 
-// The StatusHandlerFunc is an addapter to allow a function to be used as a
+// The StatusHandlerFunc is an adapter to allow a function to be used as a
 // StatusHandler.
 type StatusHandlerFunc func(*CDJStatus)
 

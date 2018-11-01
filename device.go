@@ -60,7 +60,7 @@ type DeviceListener interface {
 	OnChange(*Device)
 }
 
-// The DeviceListenerFunc is an adapater to allow a function to be used as a
+// The DeviceListenerFunc is an adapter to allow a function to be used as a
 // listener for device changes.
 type DeviceListenerFunc func(*Device)
 

@@ -163,14 +163,14 @@ func (dc *deviceConnection) Close() {
 	}
 }
 
-// Read implenets the Reader interface and will read from the device. This
+// Read implements the Reader interface and will read from the device. This
 // updates the read deadline of the connection.
 func (dc *deviceConnection) Read(p []byte) (n int, err error) {
 	dc.conn.SetReadDeadline(time.Now().Add(dc.timeout))
 	return dc.conn.Read(p)
 }
 
-// Write implenets the Writer interface and will write to the device. This
+// Write implements the Writer interface and will write to the device. This
 // updates the write deadline of the connection.
 func (dc *deviceConnection) Write(p []byte) (n int, err error) {
 	dc.conn.SetWriteDeadline(time.Now().Add(dc.timeout))
@@ -235,7 +235,7 @@ type TrackKey struct {
 	artworkID uint32
 }
 
-// NewTrackKey constructs a TrackKey from humany friendly representation of
+// NewTrackKey constructs a TrackKey from human friendly representation of
 // track keys. Slot and Type are strings, device and trackID are ints.
 func NewTrackKey(id int, slot, trackType string, deviceID int) *TrackKey {
 	tk := TrackKey{
@@ -280,8 +280,8 @@ func (rd *RemoteDB) GetTrack(q *TrackKey) (*Track, error) {
 }
 
 func (rd *RemoteDB) executeQuery(q *TrackKey) (*Track, error) {
-	// Synchroize queries as not to distrupt the query flow. We could probably
-	// be a little more precice about where the locks are, but for now the
+	// Synchronize queries as not to disrupt the query flow. We could probably
+	// be a little more precise about where the locks are, but for now the
 	// entire query is "pretty fast", just lock the whole thing.
 	lock := rd.conns[q.DeviceID].lock
 
@@ -314,8 +314,8 @@ func (rd *RemoteDB) executeQuery(q *TrackKey) (*Track, error) {
 	return track, nil
 }
 
-// queryTrackMetadata queries the rmote database for various metadata about a
-// track, returing a sparse Track object. The track Path and Artwork must be
+// queryTrackMetadata queries the remote database for various metadata about a
+// track, returning a sparse Track object. The track Path and Artwork must be
 // looked up as separate queries.
 //
 // Note that the Artwork ID is populated into the passed TrackKey after this

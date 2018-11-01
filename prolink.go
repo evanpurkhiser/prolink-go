@@ -12,8 +12,8 @@ import (
 
 var be = binary.BigEndian
 
-// Logger specifies the logger that should be used for capturing information.
-// May be disabled by replacing with the logrus.test.NullLogger.
+// Log specifies the logger that should be used for capturing information. May
+// be disabled by replacing with the logrus.test.NullLogger.
 var Log = log15.New("module", "prolink")
 
 func init() {
@@ -35,7 +35,7 @@ const announcePacketLen = 54
 
 const announceDeadline = 5 * time.Second
 
-// The UDP address on which device announcements are recieved.
+// The UDP address on which device announcements are received.
 var announceAddr = &net.UDPAddr{
 	IP:   net.IPv4zero,
 	Port: 50000,
@@ -259,7 +259,7 @@ func newVirtualCDJDevice(iface *net.Interface, id DeviceID) (*Device, error) {
 }
 
 // cdjAnnouncer manages announcing a CDJ device on the network. This is usually
-// used to announce a "virtual CDJ" which allows the prolink library to recieve
+// used to announce a "virtual CDJ" which allows the prolink library to receive
 // more details from real CDJs on the network.
 type cdjAnnouncer struct {
 	cancel  chan bool
@@ -326,7 +326,7 @@ func newCDJAnnouncer() *cdjAnnouncer {
 	}
 }
 
-// Network is the priamry API to the PRO DJ LINK network.
+// Network is the primary API to the PRO DJ LINK network.
 type Network struct {
 	announceConn *net.UDPConn
 	listenerConn *net.UDPConn
@@ -399,7 +399,7 @@ func (n *Network) SetInterface(iface *net.Interface) error {
 	return err
 }
 
-// AutoConfigure attempts to configure the two confgiuration parameters of the
+// AutoConfigure attempts to configure the two configuration parameters of the
 // network.
 //
 // - Determine which interface to announce the Virtual CDJ over by finding
@@ -497,7 +497,7 @@ func (n *Network) reloadAnnouncer() error {
 func (n *Network) openUDPConnections() error {
 	listenerConn, err := net.ListenUDP("udp", listenerAddr)
 	if err != nil {
-		return fmt.Errorf("Failed to open listener conection: %s", err)
+		return fmt.Errorf("Failed to open listener connection: %s", err)
 	}
 
 	n.listenerConn = listenerConn
@@ -524,7 +524,7 @@ var activeNetwork *Network
 // interface to announce the virtual CDJ on before all functionality of the
 // prolink network will be available, specifically:
 //
-// - CDJs will not broadcast detailed payer information until they recieve the
+// - CDJs will not broadcast detailed payer information until they receive the
 //   announce packet and recognize the libraries virtual CDJ as being on the
 //   network.
 //

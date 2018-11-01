@@ -36,7 +36,7 @@ var stoppingStates = map[prolink.PlayState]bool{
 	prolink.PlayStateLoading: true,
 }
 
-// Handler is a interface that may be implemented to recieve mix status events
+// Handler is a interface that may be implemented to receive mix status events
 // This includes the CDJStatus object that triggered the change.
 type Handler interface {
 	OnMixStatus(Event, *prolink.CDJStatus)
@@ -62,7 +62,7 @@ type Config struct {
 	BeatsUntilReported int
 
 	// TimeBetweenSets specifies the duration that no tracks must be on air.
-	// This can be thought of as how long 'air silence' is reasonble in a set
+	// This can be thought of as how long 'air silence' is reasonable in a set
 	// before a separate one has begun.
 	TimeBetweenSets time.Duration
 }
@@ -92,7 +92,7 @@ func NewProcessor(config Config, handler Handler) *Processor {
 //
 // The following track statuses are reported:
 //
-// - NowPlaying: The track is considered playing and on air to the audiance.
+// - NowPlaying: The track is considered playing and on air to the audience.
 // - Stopped:    The track was stopped / paused.
 // - ComingSoon: A new track has been loaded.
 //
@@ -104,7 +104,7 @@ func NewProcessor(config Config, handler Handler) *Processor {
 // See Config for configuration options.
 //
 // Config options may be changed after the processor has been constructed and
-// is actively reciving status updates.
+// is actively receiving status updates.
 //
 // Track changes are detected based on a number of rules:
 //
@@ -228,7 +228,7 @@ func (p *Processor) setMayEnd() {
 
 // trackMayStop tracks that a track may be stopping. Wait the configured
 // interrupt beat interval and report the next track as live if it has stopped.
-// May be canceld if the track comes back on air.
+// May be canceled if the track comes back on air.
 func (p *Processor) trackMayStop(s *prolink.CDJStatus) {
 	// track already may stop. Do not start a new waiter.
 	if _, ok := p.interruptCancel[s.PlayerID]; ok {

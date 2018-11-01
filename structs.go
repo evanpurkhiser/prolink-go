@@ -38,7 +38,7 @@ const (
 )
 
 // Render targets aren't fully understood, but they seem to relate a bit to
-// what data is returned, for example, requesting metadat to the main menu will
+// what data is returned, for example, requesting metadata to the main menu will
 // *not* return the track path, while rendering to the 'system' target includes
 // a file path.
 const (
@@ -423,7 +423,7 @@ func (p *requestArtwork) String() string {
 	return hex.Dump(p.bytes())
 }
 
-// menuItem is a higher level convinience struct that is created from a generic
+// menuItem is a higher level convenience struct that is created from a generic
 // packet for a menu item type
 type menuItem struct {
 	num       uint32
@@ -451,8 +451,8 @@ func makeMenuItem(p *genericPacket) *menuItem {
 	}
 }
 
-// menuItem is a convinience struct that adds some safe getter methods for
-// retriving menu item values.
+// menuItem is a convenience struct that adds some safe getter methods for
+// retrieving menu item values.
 type menuItems map[byte]*menuItem
 
 func (m menuItems) getText(itemType byte) string {

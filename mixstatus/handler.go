@@ -140,6 +140,11 @@ type Processor struct {
 
 	setInProgress   bool
 	setEndingCancel chan bool
+
+	// onAirCap indicates weather the CDJs are able to report their onair
+	// status (typically meaning a compatible DJM is connected). This is used
+	// to ignore onair checks if it is not available.
+	onAirCap bool
 }
 
 // reportPlayer triggers the track change handler if track on the given device
@@ -150,7 +155,7 @@ func (p *Processor) reportPlayer(pid prolink.DeviceID) {
 		return
 	}
 
-	if !p.lastStatus[pid].IsOnAir {
+	if p.onAirCap && !p.lastStatus[pid].IsOnAir {
 		return
 	}
 
@@ -268,8 +273,10 @@ func (p *Processor) trackMayBeFirst(s *prolink.CDJStatus) {
 			continue
 		}
 
+		isOnAir := !p.onAirCap || otherStatus.IsOnAir
+
 		// Another device is already on air and playing. This is not the first
-		if otherStatus.IsOnAir && playingStates[otherStatus.PlayState] {
+		if isOnAir && playingStates[otherStatus.PlayState] {
 			return
 		}
 	}
@@ -336,9 +343,13 @@ func (p *Processor) OnStatusUpdate(s *prolink.CDJStatus) {
 
 	p.lastStatus[pid] = s
 
+	if !p.onAirCap && s.IsOnAir {
+		p.onAirCap = true
+	}
+
 	// If this is the first we've heard from this CDJ and it's on air and
 	// playing immediately report it
-	if !ok && s.IsOnAir && playingStates[s.PlayState] {
+	if !ok && (!p.onAirCap || s.IsOnAir) && playingStates[s.PlayState] {
 		p.lastStartTime[pid] = time.Now()
 		p.reportPlayer(s.PlayerID)
 
@@ -356,7 +367,7 @@ func (p *Processor) OnStatusUpdate(s *prolink.CDJStatus) {
 	}
 
 	// On-Air state has changed
-	if ls.IsOnAir != s.IsOnAir {
+	if p.onAirCap && ls.IsOnAir != s.IsOnAir {
 		if !s.IsOnAir && playingStates[s.PlayState] {
 			go p.trackMayStop(s)
 		}

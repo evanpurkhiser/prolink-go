@@ -38,9 +38,9 @@ func getRemoteDBServerAddr(deviceIP net.IP) (string, error) {
 	defer conn.Close()
 
 	parts := [][]byte{
-		[]byte{0x00, 0x00, 0x00, 0x0f},
+		{0x00, 0x00, 0x00, 0x0f},
 		[]byte("RemoteDBServer"),
-		[]byte{0x00},
+		{0x00},
 	}
 
 	queryPacket := bytes.Join(parts, nil)

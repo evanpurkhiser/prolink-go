@@ -73,17 +73,17 @@ func getAnnouncePacket(dev *Device) []byte {
 	unknown2 := []byte{0x01, 0x00, 0x00, 0x00}
 
 	parts := [][]byte{
-		prolinkHeader,          // 0x00: 10 byte header
-		[]byte{0x06, 0x00},     // 0x0A: 02 byte announce packet type
-		makeNameBytes(dev),     // 0x0c: 20 byte device name
-		unknown1,               // 0x20: 04 byte unknown
-		[]byte{byte(dev.ID)},   // 0x24: 01 byte for the player ID
-		[]byte{byte(dev.Type)}, // 0x25: 01 byte for the player type
-		dev.MacAddr[:6],        // 0x26: 06 byte mac address
-		dev.IP.To4(),           // 0x2C: 04 byte IP address
-		unknown2,               // 0x30: 04 byte unknown
-		[]byte{byte(dev.Type)}, // 0x34: 01 byte for the player type
-		[]byte{0x00},           // 0x35: 01 byte final padding
+		prolinkHeader,      // 0x00: 10 byte header
+		{0x06, 0x00},       // 0x0A: 02 byte announce packet type
+		makeNameBytes(dev), // 0x0c: 20 byte device name
+		unknown1,           // 0x20: 04 byte unknown
+		{byte(dev.ID)},     // 0x24: 01 byte for the player ID
+		{byte(dev.Type)},   // 0x25: 01 byte for the player type
+		dev.MacAddr[:6],    // 0x26: 06 byte mac address
+		dev.IP.To4(),       // 0x2C: 04 byte IP address
+		unknown2,           // 0x30: 04 byte unknown
+		{byte(dev.Type)},   // 0x34: 01 byte for the player type
+		{0x00},             // 0x35: 01 byte final padding
 	}
 
 	return bytes.Join(parts, nil)

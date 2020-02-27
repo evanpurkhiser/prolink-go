@@ -1,0 +1,34 @@
+name: build
+on: [push]
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/setup-go@v2-beta
+      with:
+        go-version: ^1.13
+
+    - name: Setup GOPATH
+      run: |
+        echo "::add-path::${{ github.workspace }}/go/bin"
+        echo "::set-env name=GOPATH::${{ github.workspace }}/go"
+        echo "::set-env name=PROLINK_PATH::${{ github.workspace }}/go/src/github.com/${{ github.repository }}"
+
+    - uses: actions/checkout@v2
+      with:
+        path: ${{ env.PROLINK_PATH }}
+
+    - name: Verify
+      run: |
+        cd ${{ env.PROLINK_PATH }}
+        go get -u golang.org/x/lint/golint
+        go get ./...
+        golint -set_exit_status ./...
+
+    - name: Build
+      run: |
+        cd ${{ env.PROLINK_PATH }}
+        go build cmd/status-reciever/main.go

@@ -1,6 +1,6 @@
 ## Pioneer PRO DJ LINK client
 
-[![Build Status](https://www.travis-ci.com/EvanPurkhiser/prolink-go.svg?branch=master)](https://www.travis-ci.com/EvanPurkhiser/prolink-go)
+[![Build Status](https://github.com/evanpurkhiser/prolink-go/workflows/build/badge.svg)](https://github.com/EvanPurkhiser/prolink-go/actions?query=workflow%3Abuild)
 [![Go Report Card](https://goreportcard.com/badge/github.com/evanpurkhiser/prolink-go)](https://goreportcard.com/report/github.com/evanpurkhiser/prolink-go)
 [![GoDoc](https://godoc.org/go.evanpurkhiser.com/prolink?status.svg)](https://godoc.org/go.evanpurkhiser.com/prolink)
 

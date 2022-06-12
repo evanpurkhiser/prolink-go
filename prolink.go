@@ -378,7 +378,7 @@ func (n *Network) RemoteDB() *RemoteDB {
 // player ID that is already in use by a CDJ, otherwise the CDJ simply will not
 // respond. This is a known issue [1]
 //
-// [1]: https://github.com/EvanPurkhiser/prolink-go/issues/6
+// [1]: https://github.com/evanpurkhiser/prolink-go/issues/6
 func (n *Network) SetVirtualCDJID(id DeviceID) error {
 	n.VirtualCDJID = id
 	n.remoteDB.setRequestingDeviceID(id)

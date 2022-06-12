@@ -1,6 +1,6 @@
 ## Pioneer PRO DJ LINK client
 
-[![Build Status](https://github.com/evanpurkhiser/prolink-go/workflows/build/badge.svg)](https://github.com/EvanPurkhiser/prolink-go/actions?query=workflow%3Abuild)
+[![Build Status](https://github.com/evanpurkhiser/prolink-go/workflows/build/badge.svg)](https://github.com/evanpurkhiser/prolink-go/actions?query=workflow%3Abuild)
 [![Go Report Card](https://goreportcard.com/badge/github.com/evanpurkhiser/prolink-go)](https://goreportcard.com/report/github.com/evanpurkhiser/prolink-go)
 [![GoDoc](https://godoc.org/go.evanpurkhiser.com/prolink?status.svg)](https://godoc.org/go.evanpurkhiser.com/prolink)
 
@@ -60,18 +60,18 @@ st.AddStatusHandler(prolink.StatusHandlerFunc(statusChange));
   includes most metadata fields as well as (low quality) album artwork.
 
 - View the status of a DJ setup as a whole using the
-  [`mixstatus.Processor`](https://godoc.org/github.com/EvanPurkhiser/prolink-go/mixstatus#Processor).
+  [`mixstatus.Processor`](https://godoc.org/github.com/evanpurkhiser/prolink-go/mixstatus#Processor).
   This allows you to determine the status of tracks in a mixing situation. Has
   the track been playing long enough to be considered 'now playing'?
 
 ### Limitations, bugs, and missing functionality
 
-- [[GH-1](https://github.com/EvanPurkhiser/prolink-go/issues/1)] Currently the
+- [[GH-1](https://github.com/evanpurkhiser/prolink-go/issues/1)] Currently the
   software cannot be run on the same machine that is running Rekordbox.
   Rekordbox takes exclusive access to the socket used to communicate to the
   CDJs making it impossible to receive track status information
 
-- [[GH-6](https://github.com/EvanPurkhiser/prolink-go/issues/6)] To read track
+- [[GH-6](https://github.com/evanpurkhiser/prolink-go/issues/6)] To read track
   metadata from the CDJs USB drives you may have no more than 3 CDJs. Having 4
   CDJs on the network will only allow you to read track metadata through
   linked Rekordbox.

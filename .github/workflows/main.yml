@@ -13,8 +13,6 @@ jobs:
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
-        with:
-          args: -set_exit_status ./...
 
       - name: Build
         run: go build cmd/status-reciever/main.go

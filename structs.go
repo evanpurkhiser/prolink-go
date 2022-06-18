@@ -257,7 +257,6 @@ type introducePacket struct {
 // setTransactionID for the introducePacket is a no-op, as the transaction
 // number for the intro packet contains a magic number.
 func (p *introducePacket) setTransactionID(txID uint32) {
-	return
 }
 
 func (p *introducePacket) bytes() []byte {

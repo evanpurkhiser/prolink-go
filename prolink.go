@@ -275,7 +275,7 @@ type cdjAnnouncer struct {
 // start creates a goroutine that will continually announce a virtual CDJ
 // device on the host network.
 func (a *cdjAnnouncer) activate(vCDJ *Device, dm *DeviceManager, announceConn *net.UDPConn) {
-	if a.running == true {
+	if a.running {
 		return
 	}
 
@@ -319,7 +319,7 @@ func (a *cdjAnnouncer) activate(vCDJ *Device, dm *DeviceManager, announceConn *n
 
 // stop stops the running announcer
 func (a *cdjAnnouncer) deactivate() {
-	if a.running == true {
+	if a.running {
 		a.cancel <- true
 	}
 

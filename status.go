@@ -263,7 +263,7 @@ func (sm *CDJStatusMonitor) AddStatusHandler(h StatusHandler) {
 // activate triggers the CDJStatusMonitor to begin listening for status packets
 // given a UDP connection to listen on.
 func (sm *CDJStatusMonitor) activate(listenConn io.Reader) {
-	packet := make([]byte, 512)
+	packet := make([]byte, 1200)
 
 	statusUpdateHandler := func() {
 		n, err := listenConn.Read(packet)
